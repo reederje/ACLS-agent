@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Synthetic patients — Resuscitation Simulation{% endblock %}
+{% block content %}
+<section>
+  <p class="eyebrow">Preparation · recorder</p>
+  <h1>Synthetic patient cases</h1>
+  <p class="muted">Choose the workflow explicitly for each simulation. Protocol-specific recommendations are not enabled in this build.</p>
+  <div class="patient-grid">
+    {% for patient in patients %}
+    <article class="card patient-card">
+      <div class="patient-card-heading">
+        <span class="case-id">{{ patient.patient_id }}</span>
+        <span class="badge">{{ patient.demographics.population|title }}</span>
+      </div>
+      <h2>{{ patient.display_name }}</h2>
+      <p>{{ patient.demographics.age_display }} · {{ patient.suggested_workflow|replace('_', ' ')|title }}</p>
+      <p class="weight">{% if patient.demographics.weight_kg %}{{ patient.demographics.weight_kg }} kg{% else %}Weight unavailable{% endif %}<span class="muted"> · {{ patient.demographics.weight_provenance|replace('-', ' ') }}</span></p>
+      <p class="muted">Code status: {{ patient.demographics.code_status }}</p>
+      {% set code_records = patient.domains.code_status.records %}
+      {% set code_values = code_records|map(attribute='finding')|map(attribute='status')|unique|list %}
+      <form class="create-session-form" data-patient-id="{{ patient.patient_id }}">
+        <label for="workflow-{{ patient.patient_id }}">Simulation workflow</label>
+        <select id="workflow-{{ patient.patient_id }}" name="workflow" required>
+          <option value="" selected disabled>Choose workflow…</option>
+          <option value="cardiac_arrest">Cardiac arrest</option>
+          <option value="bradycardia_with_pulse">Bradycardia with a pulse</option>
+          <option value="tachycardia_with_pulse">Tachycardia with a pulse</option>
+        </select>
+        {% if code_values|length > 1 or 'limited' in patient.demographics.code_status|lower or 'conflict' in patient.demographics.code_status|lower %}
+        <label class="acknowledge"><input type="checkbox" name="code_status_acknowledged"> I have reviewed and acknowledge this synthetic code-status limitation/conflict.</label>
+        {% endif %}
+        <button class="button button-primary" type="submit">Create simulation session</button>
+        <p class="form-error" role="alert" hidden></p>
+      </form>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/patients.js') }}" defer></script>{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Read-only team status board{% endblock %}
+{% block head %}<meta name="session-id" content="{{ session_id }}">{% endblock %}
+{% block content %}
+<main class="board" id="board" data-session-id="{{ session_id }}">
+  <header class="board-header"><div><p class="eyebrow">Resuscitation team status board</p><h1 id="board-patient">Loading session…</h1><p id="board-demographics"></p></div><div class="board-sync"><span class="badge">READ ONLY</span><strong id="board-sync">Connecting…</strong><span id="stale-label" hidden>STALE DATA — timers use last synchronized state</span></div></header>
+  <section class="board-top-grid">
+    <div class="board-timer card"><span class="eyebrow">Elapsed</span><strong id="board-elapsed">00:00:00</strong><span id="board-lifecycle">Synchronizing</span></div>
+    <div class="board-timer card"><span class="eyebrow">Compression cycle / hold</span><strong id="board-cycle">—</strong><span id="board-compression">—</span></div>
+    <div class="board-timer card"><span class="eyebrow">Documented rhythm · pulse</span><strong id="board-rhythm">Not assessed</strong><span id="board-pulse">Pulse unknown</span></div>
+  </section>
+  <section class="board-grid">
+    <div class="card"><p class="eyebrow">Recent documented events</p><h2>Timeline</h2><ol class="event-list board-event-list" id="board-events"></ol></div>
+    <div class="card"><p class="eyebrow">Current session snapshot</p><h2>Key details</h2><dl class="board-details"><dt>Workflow</dt><dd id="board-workflow">—</dd><dt>Weight</dt><dd id="board-weight">—</dd><dt>Code status</dt><dd id="board-code">—</dd><dt>Next timer cue</dt><dd id="board-next">—</dd><dt>Protocol guidance</dt><dd>Not enabled pending verification and clinical review</dd></dl></div>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/board.js') }}" defer></script>{% endblock %}

@@ -1,0 +1,16 @@
+{
+  "patient_id":"SYN-A05","display_name":"Fictional Patient Elm","scenario_reference_time":"relative-to-session-anchor",
+  "demographics":{"age_display":"35 years","age_years":35,"population":"adult","weight_kg":63,"weight_provenance":"measured","code_status":"Full code"},"suggested_workflow":"tachycardia_with_pulse",
+  "domains":{
+    "encounters":{"availability":"available","records":[{"source_id":"A05-ENC-1","observed_offset_days":-45,"available_offset_days":-45,"finding":{"summary":"Urgent visit for episodic palpitations."}}]},
+    "problems":{"availability":"available","records":[{"source_id":"A05-PRB-1","observed_offset_days":-45,"available_offset_days":-45,"ongoing":true,"finding":{"problem":"Recurrent palpitations","status":"under evaluation"}}]},
+    "medications":{"availability":"available","records":[{"source_id":"A05-MED-1","observed_offset_days":-10,"available_offset_days":-10,"ongoing":true,"finding":{"name":"no scheduled medications documented","status":"chart statement"}}]},
+    "allergies":{"availability":"empty","records":[]},"weights":{"availability":"available","records":[{"source_id":"A05-WGT-1","observed_offset_days":-45,"available_offset_days":-45,"ongoing":true,"finding":{"kg":63,"provenance":"measured"}}]},
+    "code_status":{"availability":"available","records":[{"source_id":"A05-CODE-1","observed_offset_days":-45,"available_offset_days":-45,"ongoing":true,"finding":{"status":"full code","source":"simulation chart"}}]},
+    "vitals":{"availability":"available","records":[{"source_id":"A05-VIT-1","observed_offset_days":-45,"available_offset_days":-45,"finding":{"heart_rate_bpm":188,"blood_pressure":"118/74 mmHg","symptoms":"palpitations; alert; no syncope reported"}}]},
+    "labs":{"availability":"available","records":[{"source_id":"A05-LAB-1","observed_offset_days":-45,"available_offset_days":-45,"finding":{"test":"potassium","value":4.0,"units":"mmol/L"}}]},
+    "procedures":{"availability":"available","records":[{"source_id":"A05-PROC-1","observed_offset_days":-45,"available_offset_days":-45,"finding":{"procedure":"12-lead ECG obtained","context":"prior episode"}}]},
+    "imaging":{"availability":"empty","records":[]},"ecg":{"availability":"available","records":[{"source_id":"A05-ECG-1","observed_offset_days":-45,"available_offset_days":-45,"finding":{"report":"Regular narrow-complex tachycardia documented; no treatment outcome recorded."}}]},
+    "notes":{"availability":"available","records":[{"source_id":"A05-NOTE-1","observed_offset_days":-45,"available_offset_days":-45,"finding":{"text":"Symptoms began abruptly; patient remained alert during prior evaluation."}}]}
+  }
+}

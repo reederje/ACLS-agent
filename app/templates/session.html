@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Recording workspace — Resuscitation Simulation{% endblock %}
+{% block head %}<meta name="session-id" content="{{ session_record.id }}">{% endblock %}
+{% block content %}
+<div class="workspace" id="workspace" data-can-record="{{ 'true' if can_record else 'false' }}">
+  <section class="patient-strip card">
+    <div><span class="eyebrow">Synthetic patient</span><strong id="patient-name">{{ session_record.patient_snapshot.display_name }}</strong><span id="patient-id">{{ session_record.patient_id }}</span></div>
+    <div><span class="eyebrow">Age · mode</span><strong>{{ session_record.patient_snapshot.demographics.age_display }}</strong><span id="workflow-label">{{ session_record.workflow|replace('_', ' ')|title }}</span></div>
+    <div class="weight-block"><span class="eyebrow">Weight · fixture provenance</span><strong>{{ session_record.patient_snapshot.demographics.weight_kg or 'Not recorded' }}{% if session_record.patient_snapshot.demographics.weight_kg %} kg{% endif %}</strong><span>{{ session_record.patient_snapshot.demographics.weight_provenance|replace('-', ' ') }}</span></div>
+    <div><span class="eyebrow">Code status</span><strong>{{ session_record.patient_snapshot.demographics.code_status }}</strong></div>
+    <div><span class="eyebrow">Session</span><strong id="lifecycle">Ready</strong><span id="save-status" role="status">Connected · not started</span></div>
+  </section>
+
+  <div class="workspace-grid">
+    <section class="main-column">
+      <section class="timer-panel card" aria-label="Session timers and state">
+        <div class="timer-primary"><span class="eyebrow">Total elapsed</span><strong id="elapsed-timer">00:00:00</strong><span id="session-state-label">Ready to start</span></div>
+        <div class="timer-secondary"><span class="eyebrow" id="cycle-caption">Compression cycle</span><strong id="cycle-timer">—</strong><span id="compression-state">No compressions documented</span></div>
+        <div class="timer-secondary"><span class="eyebrow">Documented rhythm / pulse</span><strong id="rhythm-state">Not assessed</strong><span id="rhythm-details">No assessment recorded</span></div>
+      </section>
+
+      <section class="action-panel card">
+        <div class="section-heading"><div><p class="eyebrow">Recorder actions</p><h2>Session controls</h2></div><a class="button button-quiet" href="{{ url_for('sessions.board', session_id=session_record.id) }}" target="_blank" rel="noopener">Open read-only board</a></div>
+        <p id="guidance-warning" class="notice notice-warning">Protocol recommendations are disabled pending source verification and clinical review. This workspace records simulation actions only.</p>
+        {% if can_record %}<button id="takeover-button" class="button button-quiet" type="button" hidden>Take over recorder lease</button>{% endif %}
+        <div id="ready-actions" class="action-row" hidden><button class="button button-primary button-large" data-action="start">Start code</button><span class="muted" id="start-caption"></span></div>
+        <div id="active-actions" class="action-row" hidden>
+          <button class="button button-primary" data-action="hold">Compressions held</button>
+          <button class="button button-secondary" data-action="resume" hidden>Compressions resumed</button>
+          <button class="button button-secondary" data-action="start_arrest" hidden>Cardiac arrest / start compressions</button>
+          <button class="button button-secondary" data-action="cpr_start" hidden>Start CPR (pulse-present workflow)</button>
+          <button class="button button-danger" data-action="rosc">ROSC — end session</button>
+          <button class="button button-quiet" data-action="end">End session</button>
+        </div>
+        <form id="end-confirm" class="confirmation-form" hidden>
+          <label for="end-reason">Session end reason</label>
+          <input id="end-reason" name="outcome" required maxlength="100" placeholder="For example: simulation stopped">
+          <button class="button button-danger" type="submit">Confirm end session</button>
+          <button class="button button-quiet" type="button" data-cancel="end">Cancel</button>
+          <p class="form-error" role="alert" hidden></p>
+        </form>
+        <div id="rosc-confirm" class="confirmation-form" role="group" aria-label="Confirm ROSC" hidden>
+          <p><strong>Confirm ROSC?</strong> This records ROSC and ends the session immediately.</p>
+          <button class="button button-danger" type="button" id="confirm-rosc">Record ROSC and end</button>
+          <button class="button button-quiet" type="button" data-cancel="rosc">Cancel</button>
+        </div>
+        {% if can_record %}
+        <form id="takeover-form" class="confirmation-form" hidden>
+          <label for="takeover-reason">Reason for recorder takeover</label>
+          <input id="takeover-reason" name="reason" required minlength="4" maxlength="500" placeholder="Document the handoff reason">
+          <button class="button button-primary" type="submit">Confirm recorder takeover</button>
+          <button class="button button-quiet" type="button" data-cancel="takeover">Cancel</button>
+          <p class="form-error" role="alert" hidden></p>
+        </form>
+        {% endif %}
+        <p id="pulse-check-due" class="pulse-due" role="status" hidden>Pulse check due. Countdown expiry does not record a pause; document “Compressions held” only when the pause actually occurs.</p>
+        <div class="assessment-box" id="assessment-box" hidden>
+          <h3>Document rhythm and pulse separately</h3>
+          <form id="rhythm-form" class="inline-form">
+            <label>Rhythm<select name="rhythm" required><option value="" disabled selected>Select…</option><option value="vf">VF</option><option value="pulseless_vt">Pulseless VT</option><option value="asystole">Asystole</option><option value="organized">Organized rhythm</option><option value="narrow_complex">Narrow-complex tachycardia</option><option value="wide_complex">Wide-complex tachycardia</option><option value="bradycardia">Bradycardia</option><option value="other">Other</option><option value="unable_to_determine">Unable to determine</option></select></label>
+            <label>Pulse<select name="pulse" required><option value="" disabled selected>Select…</option><option value="present">Present</option><option value="absent">Absent</option><option value="unknown">Unknown</option></select></label>
+            <button class="button button-primary" type="submit">Save assessment</button>
+            <p class="form-error" id="rhythm-save-error" role="alert" hidden></p>
+          </form>
+        </div>
+      </section>
+
+      <section class="intervention-panel card">
+        <div class="section-heading"><div><p class="eyebrow">Manual documentation</p><h2>Record an intervention or finding</h2></div><span class="muted">Recording only · no recommendations</span></div>
+        <div class="tile-grid" role="group" aria-label="Documentation category">
+          <button class="category-tile" data-category="medication_admin">Medication given</button>
+          <button class="category-tile" data-category="infusion">Infusion start / change / stop</button>
+          <button class="category-tile" data-category="electrical_therapy">Electrical therapy</button>
+          <button class="category-tile" data-category="airway">Airway / breathing</button>
+          <button class="category-tile" data-category="procedure">Access / procedure</button>
+          <button class="category-tile" data-category="assessment">Assessment / finding</button>
+          <button class="category-tile" data-category="other">Other / free text</button>
+        </div>
+        <form id="event-form" class="event-form" hidden>
+          <div class="section-heading"><h3 id="event-form-title">Document event</h3><button class="button button-quiet" type="button" id="cancel-event">Cancel</button></div>
+          <div class="event-fields" id="event-fields"></div>
+          <button class="button button-primary" type="submit">Save documentation</button>
+          <p class="form-error" role="alert" hidden></p>
+        </form>
+      </section>
+
+      <section class="log-panel card">
+        <div class="section-heading"><div><p class="eyebrow">Chronological event stream</p><h2>Live event log</h2></div><span id="event-count" class="badge">0 events</span></div>
+        <ol class="event-list" id="event-list" aria-live="polite"></ol>
+      </section>
+    </section>
+
+    <aside class="context-pane card">
+      <p class="eyebrow">Frozen synthetic chart context</p>
+      <h2>Patient context</h2>
+      <p class="notice">AI summaries are not available in this phase. Source records below remain synthetic and are not real-time measurements.</p>
+      {% for domain, data in session_record.patient_snapshot.domains.items() %}
+        {% if data.records or data.availability == 'unavailable' %}
+        <details class="context-domain"><summary>{{ domain|replace('_', ' ')|title }} · {{ data.availability }}</summary>
+          {% for record in data.records %}<article class="source-record"><strong>{{ record.source_id }}</strong><span>{{ record.finding|tojson }}</span><small>{{ record.age_label }} · observed {{ record.observed_at }}</small></article>{% endfor %}
+          {% if not data.records and data.availability == 'unavailable' %}<p class="muted">Data unavailable in this synthetic chart.</p>{% endif %}
+        </details>
+        {% endif %}
+      {% endfor %}
+    </aside>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/session.js') }}" defer></script>{% endblock %}

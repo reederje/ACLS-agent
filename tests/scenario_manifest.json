@@ -1,0 +1,15 @@
+{
+  "purpose": "Test-only authored simulation scenario expectations. This file must never be loaded by application runtime or included in AI provider input.",
+  "cases": {
+    "SYN-A01": {"presentation": "VF arrest", "expected_hypothesis_ids": ["coronary_thrombosis"], "expected_evidence_source_ids": ["A01-ENC-2", "A01-ECG-1", "A01-PRB-1"]},
+    "SYN-A02": {"presentation": "PEA arrest", "expected_hypothesis_ids": ["electrolyte_abnormality"], "expected_evidence_source_ids": ["A02-ENC-2", "A02-LAB-1", "A02-NOTE-1"]},
+    "SYN-A03": {"presentation": "PEA arrest", "expected_hypothesis_ids": ["pulmonary_thrombosis"], "expected_evidence_source_ids": ["A03-ENC-1", "A03-PRB-1", "A03-NOTE-1"]},
+    "SYN-A04": {"presentation": "Symptomatic bradycardia with pulse", "expected_hypothesis_ids": ["medication_effect"], "expected_evidence_source_ids": ["A04-MED-1", "A04-ECG-1", "A04-LAB-1"]},
+    "SYN-A05": {"presentation": "Regular narrow-complex tachycardia with pulse", "expected_hypothesis_ids": [], "expected_evidence_source_ids": ["A05-ECG-1", "A05-VIT-1"]},
+    "SYN-P01": {"presentation": "PEA arrest after severe respiratory illness", "expected_hypothesis_ids": ["hypoxia"], "expected_evidence_source_ids": ["P01-VIT-1", "P01-PROC-1", "P01-NOTE-1"]},
+    "SYN-P02": {"presentation": "VF arrest with cardiomyopathy", "expected_hypothesis_ids": ["cardiac_cause"], "expected_evidence_source_ids": ["P02-PRB-1", "P02-ECG-1", "P02-PROC-1"]},
+    "SYN-P03": {"presentation": "Bradycardia with pulse and poor-perfusion findings", "expected_hypothesis_ids": ["hypoxia"], "expected_evidence_source_ids": ["P03-VIT-1", "P03-NOTE-1", "P03-ENC-1"]},
+    "SYN-P04": {"presentation": "Regular narrow-complex tachycardia with pulse", "expected_hypothesis_ids": [], "expected_evidence_source_ids": ["P04-ENC-2", "P04-ECG-1", "P04-VIT-1"]},
+    "SYN-P05": {"presentation": "Asystolic arrest after prolonged vomiting/diarrhea; estimated weight", "expected_hypothesis_ids": ["hypovolemia", "acidosis"], "expected_evidence_source_ids": ["P05-NOTE-1", "P05-WGT-2"]}
+  }
+}

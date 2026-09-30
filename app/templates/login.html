@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Sign in — Resuscitation Simulation{% endblock %}
+{% block content %}
+<section class="card narrow-card" aria-labelledby="login-title">
+  <p class="eyebrow">Synthetic simulation environment</p>
+  <h1 id="login-title">Sign in</h1>
+  <p class="muted">Use an account configured by the project administrator. Recorder and viewer accounts have separate permissions.</p>
+  <form method="post" action="{{ url_for('auth.login') }}" class="form-stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="username">Username</label>
+    <input id="username" name="username" autocomplete="username" required autofocus>
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <button class="button button-primary" type="submit">Sign in</button>
+  </form>
+</section>
+{% endblock %}

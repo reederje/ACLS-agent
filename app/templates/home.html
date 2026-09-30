@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <p class="eyebrow">Project foundation</p>
+  <h1>Resuscitation simulation</h1>
+  <p>This synthetic-only prototype supports session recording, explicit workflow transitions, visible timers, manual event documentation, and a read-only team board. Clinical decision support and AI summaries remain disabled pending verification and review.</p>
+  {% if session.get('role') == 'recorder' %}
+    <a class="button button-primary" href="{{ url_for('patients.list_patients') }}">Open synthetic patient cases</a>
+  {% else %}
+    <p class="notice">Read-only viewer account. No active session board is available yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

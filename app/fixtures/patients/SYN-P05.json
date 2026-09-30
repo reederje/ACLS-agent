@@ -1,0 +1,15 @@
+{
+  "patient_id":"SYN-P05","display_name":"Fictional Patient Juniper","scenario_reference_time":"relative-to-session-anchor",
+  "demographics":{"age_display":"3 years","age_years":3,"population":"pediatric","weight_kg":14,"weight_provenance":"estimated","code_status":"Conflicting synthetic documentation: full-code record and later limited-status note; acknowledgement required."},"suggested_workflow":"cardiac_arrest",
+  "domains":{
+    "encounters":{"availability":"available","records":[{"source_id":"P05-ENC-1","observed_offset_days":-420,"available_offset_days":-420,"finding":{"summary":"Prior urgent visit; limited recent encounter history available."}}]},
+    "problems":{"availability":"available","records":[{"source_id":"P05-PRB-1","observed_offset_days":-800,"available_offset_days":-800,"ongoing":true,"finding":{"problem":"No ongoing problem list supplied","status":"chart domain limited"}}]},
+    "medications":{"availability":"empty","records":[]},"allergies":{"availability":"empty","records":[]},
+    "weights":{"availability":"available","records":[{"source_id":"P05-WGT-1","observed_offset_days":-430,"available_offset_days":-430,"ongoing":true,"finding":{"kg":12.1,"provenance":"measured","note":"Stale measurement; current scenario fixture estimate is 14 kg and must be confirmed/corrected."}},{"source_id":"P05-WGT-2","observed_offset_days":-1,"available_offset_days":-1,"ongoing":true,"finding":{"kg":14,"provenance":"estimated","note":"Synthetic scenario estimate; nurse confirmation required."}}]},
+    "code_status":{"availability":"available","records":[{"source_id":"P05-CODE-1","observed_offset_days":-500,"available_offset_days":-500,"ongoing":true,"finding":{"status":"full code","source":"older synthetic record"}},{"source_id":"P05-CODE-2","observed_offset_days":-30,"available_offset_days":-30,"ongoing":true,"finding":{"status":"limited intervention documented; details unclear","source":"synthetic note; requires acknowledgement and review"}}]},
+    "vitals":{"availability":"available","records":[{"source_id":"P05-VIT-1","observed_offset_days":-1,"available_offset_days":-1,"finding":{"context":"Caregiver-reported reduced urine output; no measured vitals in recent chart."}}]},
+    "labs":{"availability":"empty","records":[]},"procedures":{"availability":"empty","records":[]},
+    "imaging":{"availability":"unavailable","records":[]},"ecg":{"availability":"unavailable","records":[]},
+    "notes":{"availability":"available","records":[{"source_id":"P05-NOTE-1","observed_offset_days":-1,"available_offset_days":-1,"finding":{"text":"Prolonged vomiting and diarrhea with reduced oral intake. Recent chart data are sparse."}}]}
+  }
+}

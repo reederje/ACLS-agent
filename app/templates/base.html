@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}Resuscitation Simulation{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div class="simulation-banner" role="note">SIMULATION — SYNTHETIC PATIENT DATA ONLY</div>
+  <header class="site-header">
+    <a class="brand" href="{{ url_for('index') }}">Resuscitation Workspace</a>
+    {% if session.get('user_id') %}
+    <form action="{{ url_for('auth.logout') }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="button button-quiet" type="submit">Sign out</button>
+    </form>
+    {% endif %}
+  </header>
+  <main class="page-shell">
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+      <p class="notice notice-{{ category }}" role="status">{{ message }}</p>
+    {% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

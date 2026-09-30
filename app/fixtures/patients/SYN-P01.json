@@ -1,0 +1,17 @@
+{
+  "patient_id":"SYN-P01","display_name":"Fictional Patient Finch","scenario_reference_time":"relative-to-session-anchor",
+  "demographics":{"age_display":"4 years","age_years":4,"population":"pediatric","weight_kg":16,"weight_provenance":"measured","code_status":"Full code"},"suggested_workflow":"cardiac_arrest",
+  "domains":{
+    "encounters":{"availability":"available","records":[{"source_id":"P01-ENC-1","observed_offset_days":-16,"available_offset_days":-16,"finding":{"summary":"Emergency visit for viral respiratory symptoms."}}]},
+    "problems":{"availability":"available","records":[{"source_id":"P01-PRB-1","observed_offset_days":-16,"available_offset_days":-16,"ongoing":true,"finding":{"problem":"Recent respiratory illness","status":"active"}}]},
+    "medications":{"availability":"available","records":[{"source_id":"P01-MED-1","observed_offset_days":-14,"available_offset_days":-14,"ongoing":true,"finding":{"name":"saline nasal spray","status":"caregiver-reported"}}]},
+    "allergies":{"availability":"empty","records":[]},"weights":{"availability":"available","records":[{"source_id":"P01-WGT-1","observed_offset_days":-16,"available_offset_days":-16,"ongoing":true,"finding":{"kg":16,"provenance":"measured"}}]},
+    "code_status":{"availability":"available","records":[{"source_id":"P01-CODE-1","observed_offset_days":-16,"available_offset_days":-16,"ongoing":true,"finding":{"status":"full code","source":"simulation chart"}}]},
+    "vitals":{"availability":"available","records":[{"source_id":"P01-VIT-1","observed_offset_days":-16,"available_offset_days":-16,"finding":{"oxygen_saturation":89,"units":"%","context":"respiratory illness visit; historical"}}]},
+    "labs":{"availability":"empty","records":[]},
+    "procedures":{"availability":"available","records":[{"source_id":"P01-PROC-1","observed_offset_days":-16,"available_offset_days":-16,"finding":{"procedure":"supplemental oxygen during observation","context":"prior encounter"}}]},
+    "imaging":{"availability":"available","records":[{"source_id":"P01-IMG-1","observed_offset_days":-16,"available_offset_days":-16,"finding":{"report":"Chest radiograph: mild peribronchial thickening reported."}}]},
+    "ecg":{"availability":"empty","records":[]},
+    "notes":{"availability":"available","records":[{"source_id":"P01-NOTE-1","observed_offset_days":-16,"available_offset_days":-16,"finding":{"text":"Caregiver reported increased work of breathing and reduced oral intake."}}]}
+  }
+}

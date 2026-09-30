@@ -1,0 +1,17 @@
+{
+  "patient_id":"SYN-P04","display_name":"Fictional Patient Indigo","scenario_reference_time":"relative-to-session-anchor",
+  "demographics":{"age_display":"6 years","age_years":6,"population":"pediatric","weight_kg":21,"weight_provenance":"measured","code_status":"Full code"},"suggested_workflow":"tachycardia_with_pulse",
+  "domains":{
+    "encounters":{"availability":"available","records":[{"source_id":"P04-ENC-1","observed_offset_days":-80,"available_offset_days":-80,"finding":{"summary":"Emergency visit for abrupt palpitations; symptoms resolved before discharge."}},{"source_id":"P04-ENC-2","observed_offset_days":-18,"available_offset_days":-18,"finding":{"summary":"Repeat assessment for episodic tachycardia."}}]},
+    "problems":{"availability":"available","records":[{"source_id":"P04-PRB-1","observed_offset_days":-80,"available_offset_days":-80,"ongoing":true,"finding":{"problem":"Paroxysmal supraventricular tachycardia history","status":"under evaluation"}}]},
+    "medications":{"availability":"available","records":[{"source_id":"P04-MED-1","observed_offset_days":-18,"available_offset_days":-18,"ongoing":true,"finding":{"name":"no daily cardiac medication listed","status":"chart statement"}}]},
+    "allergies":{"availability":"empty","records":[]},"weights":{"availability":"available","records":[{"source_id":"P04-WGT-1","observed_offset_days":-18,"available_offset_days":-18,"ongoing":true,"finding":{"kg":21,"provenance":"measured"}}]},
+    "code_status":{"availability":"available","records":[{"source_id":"P04-CODE-1","observed_offset_days":-18,"available_offset_days":-18,"ongoing":true,"finding":{"status":"full code","source":"simulation chart"}}]},
+    "vitals":{"availability":"available","records":[{"source_id":"P04-VIT-1","observed_offset_days":-18,"available_offset_days":-18,"finding":{"heart_rate_bpm":216,"blood_pressure":"96/58 mmHg","symptoms":"palpitations; alert per note"}}]},
+    "labs":{"availability":"available","records":[{"source_id":"P04-LAB-1","observed_offset_days":-18,"available_offset_days":-18,"finding":{"test":"glucose","value":92,"units":"mg/dL"}}]},
+    "procedures":{"availability":"available","records":[{"source_id":"P04-PROC-1","observed_offset_days":-80,"available_offset_days":-80,"finding":{"procedure":"12-lead ECG","context":"prior tachycardia encounter"}}]},
+    "imaging":{"availability":"empty","records":[]},
+    "ecg":{"availability":"available","records":[{"source_id":"P04-ECG-1","observed_offset_days":-18,"available_offset_days":-18,"finding":{"report":"Regular narrow-complex tachycardia described; rhythm strip retained in fictional chart."}}]},
+    "notes":{"availability":"available","records":[{"source_id":"P04-NOTE-1","observed_offset_days":-18,"available_offset_days":-18,"finding":{"text":"Caregiver describes sudden onset and offset; no exertional trigger documented."}}]}
+  }
+}

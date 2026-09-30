@@ -1,0 +1,18 @@
+{
+  "patient_id":"SYN-P02","display_name":"Fictional Patient Grove","scenario_reference_time":"relative-to-session-anchor",
+  "demographics":{"age_display":"10 years","age_years":10,"population":"pediatric","weight_kg":32,"weight_provenance":"measured","code_status":"Full code"},"suggested_workflow":"cardiac_arrest",
+  "domains":{
+    "encounters":{"availability":"available","records":[{"source_id":"P02-ENC-1","observed_offset_days":-24,"available_offset_days":-24,"finding":{"summary":"Cardiology follow-up for cardiomyopathy."}}]},
+    "problems":{"availability":"available","records":[{"source_id":"P02-PRB-1","observed_offset_days":-500,"available_offset_days":-500,"ongoing":true,"finding":{"problem":"Cardiomyopathy","status":"active"}}]},
+    "medications":{"availability":"available","records":[{"source_id":"P02-MED-1","observed_offset_days":-7,"available_offset_days":-7,"ongoing":true,"finding":{"name":"enalapril","status":"active"}},{"source_id":"P02-MED-2","observed_offset_days":-7,"available_offset_days":-7,"ongoing":true,"finding":{"name":"carvedilol","status":"active"}}]},
+    "allergies":{"availability":"available","records":[{"source_id":"P02-ALG-1","observed_offset_days":-300,"available_offset_days":-300,"ongoing":true,"finding":{"substance":"latex","reaction":"contact redness","status":"active"}}]},
+    "weights":{"availability":"available","records":[{"source_id":"P02-WGT-1","observed_offset_days":-24,"available_offset_days":-24,"ongoing":true,"finding":{"kg":32,"provenance":"measured"}}]},
+    "code_status":{"availability":"available","records":[{"source_id":"P02-CODE-1","observed_offset_days":-24,"available_offset_days":-24,"ongoing":true,"finding":{"status":"full code","source":"simulation chart"}}]},
+    "vitals":{"availability":"available","records":[{"source_id":"P02-VIT-1","observed_offset_days":-24,"available_offset_days":-24,"finding":{"heart_rate_bpm":112,"context":"cardiology clinic"}}]},
+    "labs":{"availability":"available","records":[{"source_id":"P02-LAB-1","observed_offset_days":-24,"available_offset_days":-24,"finding":{"test":"BNP","value":280,"units":"pg/mL","context":"historical cardiology result"}}]},
+    "procedures":{"availability":"available","records":[{"source_id":"P02-PROC-1","observed_offset_days":-500,"available_offset_days":-500,"finding":{"procedure":"echocardiogram","summary":"Reduced ventricular function documented in prior report."}}]},
+    "imaging":{"availability":"empty","records":[]},
+    "ecg":{"availability":"available","records":[{"source_id":"P02-ECG-1","observed_offset_days":-24,"available_offset_days":-24,"finding":{"report":"Ventricular hypertrophy and repolarization abnormalities described."}}]},
+    "notes":{"availability":"available","records":[{"source_id":"P02-NOTE-1","observed_offset_days":-24,"available_offset_days":-24,"finding":{"text":"Family reports usual activity tolerance; no recent syncope documented."}}]}
+  }
+}
