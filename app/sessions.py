@@ -9,10 +9,12 @@ from uuid import uuid4
 from flask import Blueprint, abort, current_app, jsonify, render_template, request
 from sqlalchemy.exc import IntegrityError
 
+from .ai_summary import create_pending_result, get_status, start_generation
 from .auth import current_user, login_required, role_required
 from .extensions import db
 from .models import AuditEntry, CodeSession, Event, utc_now
 from .patient_data import JsonPatientRepository
+from .protocol_rules import adult_cardiac_arrest_guidance
 
 sessions = Blueprint("sessions", __name__)
 LEASE_SESSION_KEY = "recorder_leases"
@@ -97,6 +99,19 @@ def _state(record: CodeSession) -> dict:
         "recorded_at": _iso(event.recorded_at),
         "sequence": event.sequence,
     } for event in events]
+    guidance = adult_cardiac_arrest_guidance(
+        lifecycle=record.lifecycle,
+        workflow=record.workflow,
+        population=record.patient_snapshot.get("demographics", {}).get("population"),
+        weight_kg=record.patient_snapshot.get("demographics", {}).get("weight_kg"),
+        compression_status=record.compression_status,
+        started_at=record.started_at,
+        compression_anchor_at=record.compression_anchor_at,
+        hold_anchor_at=record.hold_anchor_at,
+        events=timeline,
+        now=now,
+        ruleset_version=record.protocol_version,
+    )
     return {
         "id": record.id,
         "patient": record.patient_snapshot,
@@ -112,7 +127,8 @@ def _state(record: CodeSession) -> dict:
         "server_time": _iso(now),
         "rhythm_assessment": rhythm.payload if rhythm else None,
         "events": timeline,
-        "guidance_status": "Not enabled — protocol rules pending source verification and clinical review.",
+        "recommendations": guidance,
+        "guidance_status": guidance["summary"],
     }
 
 
@@ -157,7 +173,11 @@ def create_session():
     db.session.add(record)
     db.session.flush()
     record.revision = 1
+    ai_result = create_pending_result(record)
+    db.session.flush()
+    ai_result_id = ai_result.id
     db.session.commit()
+    start_generation(ai_result_id)
     return jsonify(session_id=record.id, lease_token=lease_token, revision=record.revision), 201
 
 
@@ -180,6 +200,13 @@ def board(session_id: str):
 def session_state(session_id: str):
     record = _session_or_404(session_id)
     return jsonify(_state(record))
+
+
+@sessions.get("/api/sessions/<session_id>/ai-summary")
+@login_required
+def ai_summary(session_id: str):
+    _session_or_404(session_id)
+    return jsonify(get_status(session_id))
 
 
 @sessions.post("/api/sessions/<session_id>/actions")
@@ -235,10 +262,15 @@ def session_action(session_id: str):
             return _error("Rhythm assessment requires an active session.", 409)
         rhythm = details.get("rhythm")
         pulse = details.get("pulse")
-        if rhythm not in {"vf", "pulseless_vt", "asystole", "organized", "narrow_complex", "wide_complex", "bradycardia", "other", "unable_to_determine"}:
-            return _error("Choose a supported documentation label or Unable to determine.", 400)
-        if pulse not in {"present", "absent", "unknown"}:
-            return _error("Pulse must be documented separately as present, absent, or unknown.", 400)
+        if rhythm not in {"vf", "vt", "pea", "asystole", "rosc"}:
+            return _error("Choose VF, VT, PEA, asystole, or ROSC.", 400)
+        if rhythm == "vt":
+            if pulse not in {"present", "absent"}:
+                return _error("For ventricular tachycardia, document whether a pulse is present or absent.", 400)
+        else:
+            implied_pulse = "present" if rhythm == "rosc" else "absent"
+            if pulse != implied_pulse:
+                return _error("Pulse status is implied by the selected rhythm.", 400)
         assessment = {
             "rhythm": rhythm,
             "pulse": pulse,

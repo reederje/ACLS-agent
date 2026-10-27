@@ -3,35 +3,74 @@
 {% block head %}<meta name="session-id" content="{{ session_record.id }}">{% endblock %}
 {% block content %}
 <div class="workspace" id="workspace" data-can-record="{{ 'true' if can_record else 'false' }}">
-  <section class="patient-strip card">
-    <div><span class="eyebrow">Synthetic patient</span><strong id="patient-name">{{ session_record.patient_snapshot.display_name }}</strong><span id="patient-id">{{ session_record.patient_id }}</span></div>
-    <div><span class="eyebrow">Age · mode</span><strong>{{ session_record.patient_snapshot.demographics.age_display }}</strong><span id="workflow-label">{{ session_record.workflow|replace('_', ' ')|title }}</span></div>
-    <div class="weight-block"><span class="eyebrow">Weight · fixture provenance</span><strong>{{ session_record.patient_snapshot.demographics.weight_kg or 'Not recorded' }}{% if session_record.patient_snapshot.demographics.weight_kg %} kg{% endif %}</strong><span>{{ session_record.patient_snapshot.demographics.weight_provenance|replace('-', ' ') }}</span></div>
-    <div><span class="eyebrow">Code status</span><strong>{{ session_record.patient_snapshot.demographics.code_status }}</strong></div>
-    <div><span class="eyebrow">Session</span><strong id="lifecycle">Ready</strong><span id="save-status" role="status">Connected · not started</span></div>
-  </section>
-
   <div class="workspace-grid">
     <section class="main-column">
-      <section class="timer-panel card" aria-label="Session timers and state">
+      <div class="overview-row">
+        <section class="patient-summary card" aria-label="Patient and session summary">
+          <div class="patient-summary-heading"><div><p class="eyebrow">Synthetic patient</p><strong id="patient-name">{{ session_record.patient_snapshot.display_name }}</strong></div><span class="case-id">{{ session_record.patient_id }}</span></div>
+          <div class="patient-summary-grid">
+            <div><span>Age</span><strong>{{ session_record.patient_snapshot.demographics.age_display }}</strong></div>
+            <div><span>Mode</span><strong id="workflow-label">{{ session_record.workflow|replace('_', ' ')|title }}</strong></div>
+            <div><span>Weight</span><strong>{{ session_record.patient_snapshot.demographics.weight_kg or 'Not recorded' }}{% if session_record.patient_snapshot.demographics.weight_kg %} kg{% endif %}</strong><small>{{ session_record.patient_snapshot.demographics.weight_provenance|replace('-', ' ')|title }}</small></div>
+            <div><span>Code status</span><strong>{{ session_record.patient_snapshot.demographics.code_status }}</strong></div>
+          </div>
+          <div class="patient-session-meta"><span>Session: <strong id="lifecycle">Ready</strong></span><span id="save-status" role="status">Connected · not started</span></div>
+        </section>
+        <section class="timer-panel card" aria-label="Session timers and state">
         <div class="timer-primary"><span class="eyebrow">Total elapsed</span><strong id="elapsed-timer">00:00:00</strong><span id="session-state-label">Ready to start</span></div>
         <div class="timer-secondary"><span class="eyebrow" id="cycle-caption">Compression cycle</span><strong id="cycle-timer">—</strong><span id="compression-state">No compressions documented</span></div>
         <div class="timer-secondary"><span class="eyebrow">Documented rhythm / pulse</span><strong id="rhythm-state">Not assessed</strong><span id="rhythm-details">No assessment recorded</span></div>
-      </section>
+        </section>
+      </div>
 
-      <section class="action-panel card">
-        <div class="section-heading"><div><p class="eyebrow">Recorder actions</p><h2>Session controls</h2></div><a class="button button-quiet" href="{{ url_for('sessions.board', session_id=session_record.id) }}" target="_blank" rel="noopener">Open read-only board</a></div>
-        <p id="guidance-warning" class="notice notice-warning">Protocol recommendations are disabled pending source verification and clinical review. This workspace records simulation actions only.</p>
+      <section class="next-steps-panel card" aria-labelledby="next-steps-title">
+        <div class="section-heading"><div><p class="eyebrow">Action queue</p><h2 id="next-steps-title">Next steps</h2></div><a class="button button-quiet" href="{{ url_for('sessions.board', session_id=session_record.id) }}" target="_blank" rel="noopener">Open read-only board</a></div>
+        <section id="recommendation-panel" class="recommendation-panel" aria-labelledby="recommendation-title" aria-live="polite">
+          <div class="section-heading"><div><h3 id="recommendation-title">Adult cardiac-arrest guidance</h3></div><span id="ruleset-badge" class="badge">Ruleset</span></div>
+          <p id="recommendation-summary" class="recommendation-summary">Waiting for session state…</p>
+          <div id="next-step-list" class="next-step-list" aria-live="polite"></div>
+          <details class="guidance-details"><summary>Why this is suggested</summary><div id="recommendation-list" class="recommendation-list"></div></details>
+          <p class="recommendation-source"><a id="recommendation-source-link" href="https://cpr.heart.org/-/media/CPR-Files/CPR-Guidelines-Files/2025-Algorithms/Algorithm-ACLS-CA-250527.pdf?sc_lang=en" target="_blank" rel="noopener">2025 AHA Adult Cardiac Arrest Algorithm</a><span> · Synthetic simulation only; clinician determines and documents all actions.</span></p>
+        </section>
+        <div class="guidance-help-links" aria-label="Protocol reference popups">
+          <button class="button button-quiet" type="button" data-open-guidance="high-quality-cpr-dialog">High-quality CPR details</button>
+          <button class="button button-quiet" type="button" data-open-guidance="shock-recommendations-dialog">Shock details</button>
+        </div>
+        <dialog class="guidance-dialog" id="high-quality-cpr-dialog" aria-labelledby="cpr-dialog-title">
+          <div class="section-heading"><h2 id="cpr-dialog-title">High-quality CPR recommendations</h2><button class="button button-quiet" type="button" data-close-guidance>Close</button></div>
+          <ul>
+            <li>Push hard: at least 2 inches (5 cm).</li><li>Push fast: 100–120 compressions per minute.</li>
+            <li>Allow complete chest recoil; minimize interruptions; avoid excessive ventilation.</li>
+            <li>Change compressors about every 2 minutes, or sooner if fatigued.</li>
+            <li>Without an advanced airway: 30:2 compression-to-ventilation ratio.</li>
+            <li>With an advanced airway: continuous compressions and 1 breath every 6 seconds.</li>
+            <li>Use continuous waveform capnography when available; if ETCO₂ is low or decreasing, reassess CPR quality.</li>
+          </ul>
+          <a href="https://cpr.heart.org/-/media/CPR-Files/CPR-Guidelines-Files/2025-Algorithms/Algorithm-ACLS-CA-250527.pdf?sc_lang=en" target="_blank" rel="noopener">Open the AHA source PDF</a>
+        </dialog>
+        <dialog class="guidance-dialog" id="shock-recommendations-dialog" aria-labelledby="shock-dialog-title">
+          <div class="section-heading"><h2 id="shock-dialog-title">Shock recommendations</h2><button class="button button-quiet" type="button" data-close-guidance>Close</button></div>
+          <ul>
+            <li>For VF/pulseless VT, recommend one shock, then immediately resume CPR for 2 minutes before the next rhythm check; do not recommend stacked shocks.</li>
+            <li><strong>Biphasic:</strong> use the manufacturer's recommended energy (commonly 120–200 J); if unknown, use the maximum available setting. Subsequent shocks may use equivalent or higher energy according to device guidance.</li>
+            <li><strong>Monophasic:</strong> 360 J.</li>
+          </ul>
+          <p class="muted">Informational only. The app does not select device settings or deliver a shock; the clinician determines and documents the action.</p>
+          <a href="https://cpr.heart.org/-/media/CPR-Files/CPR-Guidelines-Files/2025-Algorithms/Algorithm-ACLS-CA-250527.pdf?sc_lang=en" target="_blank" rel="noopener">Open the AHA source PDF</a>
+        </dialog>
         {% if can_record %}<button id="takeover-button" class="button button-quiet" type="button" hidden>Take over recorder lease</button>{% endif %}
-        <div id="ready-actions" class="action-row" hidden><button class="button button-primary button-large" data-action="start">Start code</button><span class="muted" id="start-caption"></span></div>
-        <div id="active-actions" class="action-row" hidden>
+        <details class="secondary-controls">
+          <summary>Other session controls</summary>
+          <p class="muted" id="start-caption"></p>
+          <div id="ready-actions" class="action-row" hidden><button class="button button-primary button-large" data-action="start">Start code</button></div>
+          <div id="active-actions" class="action-row" hidden>
           <button class="button button-primary" data-action="hold">Compressions held</button>
           <button class="button button-secondary" data-action="resume" hidden>Compressions resumed</button>
           <button class="button button-secondary" data-action="start_arrest" hidden>Cardiac arrest / start compressions</button>
           <button class="button button-secondary" data-action="cpr_start" hidden>Start CPR (pulse-present workflow)</button>
           <button class="button button-danger" data-action="rosc">ROSC — end session</button>
           <button class="button button-quiet" data-action="end">End session</button>
-        </div>
+          </div>
         <form id="end-confirm" class="confirmation-form" hidden>
           <label for="end-reason">Session end reason</label>
           <input id="end-reason" name="outcome" required maxlength="100" placeholder="For example: simulation stopped">
@@ -53,16 +92,53 @@
           <p class="form-error" role="alert" hidden></p>
         </form>
         {% endif %}
-        <p id="pulse-check-due" class="pulse-due" role="status" hidden>Pulse check due. Countdown expiry does not record a pause; document “Compressions held” only when the pause actually occurs.</p>
-        <div class="assessment-box" id="assessment-box" hidden>
-          <h3>Document rhythm and pulse separately</h3>
+        </details>
+        <dialog class="guidance-dialog action-dialog" id="pulse-check-dialog" aria-labelledby="pulse-check-title">
+          <div class="section-heading"><h2 id="pulse-check-title">Document rhythm and pulse</h2><button class="button button-quiet" type="button" data-close-guidance>Close</button></div>
+          <p class="muted">Record the observed rhythm and pulse separately. No findings are inferred and compressions are not restarted automatically.</p>
           <form id="rhythm-form" class="inline-form">
-            <label>Rhythm<select name="rhythm" required><option value="" disabled selected>Select…</option><option value="vf">VF</option><option value="pulseless_vt">Pulseless VT</option><option value="asystole">Asystole</option><option value="organized">Organized rhythm</option><option value="narrow_complex">Narrow-complex tachycardia</option><option value="wide_complex">Wide-complex tachycardia</option><option value="bradycardia">Bradycardia</option><option value="other">Other</option><option value="unable_to_determine">Unable to determine</option></select></label>
-            <label>Pulse<select name="pulse" required><option value="" disabled selected>Select…</option><option value="present">Present</option><option value="absent">Absent</option><option value="unknown">Unknown</option></select></label>
+            <label>Rhythm<select name="rhythm" required><option value="" disabled selected>Select…</option><option value="vf">Ventricular Fibrillation (VF)</option><option value="vt">Ventricular Tachycardia (VT)</option><option value="pea">Pulseless Electrical Activity (PEA)</option><option value="asystole">Asystole</option><option value="rosc">Return of Spontaneous Circulation (ROSC)</option></select></label>
+            <label id="pulse-choice-field" hidden>Pulse<select name="pulse"><option value="" disabled selected>Select…</option><option value="present">Present</option><option value="absent">Absent</option></select></label>
             <button class="button button-primary" type="submit">Save assessment</button>
             <p class="form-error" id="rhythm-save-error" role="alert" hidden></p>
           </form>
-        </div>
+        </dialog>
+        <dialog class="guidance-dialog action-dialog" id="epinephrine-dialog" aria-labelledby="epinephrine-title">
+          <div class="section-heading"><h2 id="epinephrine-title">Record epinephrine administration</h2><button class="button button-quiet" type="button" data-close-guidance>Close</button></div>
+          <form id="epinephrine-form" class="event-fields">
+            <label>Medication<input name="title" value="Epinephrine" readonly></label>
+            <label>Dose<input name="dose" type="number" min="0.01" step="any" value="1" required><span class="muted">mg · editable</span></label>
+            <label>Route<select name="route" required><option value="" disabled selected>Select route…</option><option value="IV">IV</option><option value="IO">IO</option></select></label>
+            <label>Administration time<input name="occurred_at" type="datetime-local" step="1" required></label>
+            <label class="dialog-full-width">Note (optional)<input name="note"></label>
+            <p class="muted dialog-full-width">Default dose shown from the 2025 AHA Adult Cardiac Arrest Algorithm. Confirm the actual dose and route before recording.</p>
+            <div class="dialog-full-width action-row"><button class="button button-primary" type="submit">Record administration</button><p class="form-error" role="alert" hidden></p></div>
+          </form>
+        </dialog>
+        <dialog class="guidance-dialog action-dialog" id="antiarrhythmic-dialog" aria-labelledby="antiarrhythmic-title">
+          <div class="section-heading"><h2 id="antiarrhythmic-title">Record antiarrhythmic administration</h2><button class="button button-quiet" type="button" data-close-guidance>Close</button></div>
+          <form id="antiarrhythmic-form" class="event-fields">
+            <label>Medication<select name="agent" required></select></label>
+            <label>Dose<input name="dose" type="number" min="0.01" step="any" required><span class="muted">mg · editable</span></label>
+            <label>Route<select name="route" required><option value="IV">IV</option><option value="IO">IO</option></select></label>
+            <label>Administration time<input name="occurred_at" type="datetime-local" step="1" required></label>
+            <p id="antiarrhythmic-dose-guidance" class="muted dialog-full-width"></p>
+            <label class="dialog-full-width">Note (optional)<input name="note"></label>
+            <p class="muted dialog-full-width">The displayed dose is prefilled from the 2025 AHA adult arrest algorithm and available simulation weight. Confirm the actual dose and route before recording.</p>
+            <div class="dialog-full-width action-row"><button class="button button-primary" type="submit">Record administration</button><p class="form-error" role="alert" hidden></p></div>
+          </form>
+          <a href="https://cpr.heart.org/-/media/CPR-Files/CPR-Guidelines-Files/2025-Algorithms/Algorithm-ACLS-CA-250527.pdf?sc_lang=en" target="_blank" rel="noopener">Open the AHA source PDF</a>
+        </dialog>
+        <dialog class="guidance-dialog action-dialog" id="shock-record-dialog" aria-labelledby="shock-record-title">
+          <div class="section-heading"><h2 id="shock-record-title">Record defibrillation</h2><button class="button button-quiet" type="button" data-close-guidance>Close</button></div>
+          <form id="shock-record-form" class="event-fields">
+            <label>Delivered energy (J)<input name="energy_joules" type="number" min="0.01" step="any" required></label>
+            <label>Time delivered<input name="occurred_at" type="datetime-local" step="1" required></label>
+            <label class="dialog-full-width">Note (optional)<input name="note"></label>
+            <p class="muted dialog-full-width">Enter the energy actually delivered; this form does not select device settings or deliver a shock.</p>
+            <div class="dialog-full-width action-row"><button class="button button-primary" type="submit">Record shock</button><p class="form-error" role="alert" hidden></p></div>
+          </form>
+        </dialog>
       </section>
 
       <section class="intervention-panel card">
@@ -93,14 +169,96 @@
     <aside class="context-pane card">
       <p class="eyebrow">Frozen synthetic chart context</p>
       <h2>Patient context</h2>
-      <p class="notice">AI summaries are not available in this phase. Source records below remain synthetic and are not real-time measurements.</p>
+      <section id="ai-summary" class="ai-summary" aria-labelledby="ai-summary-title" aria-live="polite">
+        <h3 id="ai-summary-title">AI summary</h3>
+        <p id="ai-summary-pending" class="muted">Generating AI summary… it will appear here as soon as it is complete.</p>
+        <p id="ai-summary-unavailable" class="notice notice-warning" hidden>No AI summary is available at this time.</p>
+        <div id="ai-summary-ready" hidden>
+          <p id="ai-summary-text"></p>
+          <h4>Top 3 potential causes of arrest</h4>
+          <ol id="ai-cause-list" class="ai-cause-list"></ol>
+          <p class="muted" id="ai-summary-source"></p>
+        </div>
+        <p class="muted">AI-generated and advisory only. Not a substitute for clinical judgment.</p>
+      </section>
+      <dialog class="guidance-dialog" id="ai-cause-dialog" aria-labelledby="ai-cause-title">
+        <div class="section-heading"><h2 id="ai-cause-title"></h2><button class="button button-quiet" type="button" data-close-guidance>Close</button></div>
+        <p id="ai-cause-rationale"></p>
+        <h3>Recommended bedside check</h3>
+        <p id="ai-cause-check"></p>
+        <h3>Recommended treatment if suspected</h3>
+        <p id="ai-cause-treatment"></p>
+        <p class="muted">AI-generated and advisory only. Not a substitute for clinical judgment.</p>
+      </dialog>
+      <p class="notice">Source records below remain synthetic and are not real-time measurements.</p>
+      {% macro detail_fields(finding, omit=[]) %}
+        <div class="context-fields">
+          {% for key, value in finding.items() if key not in omit %}
+          <div><span class="context-field-label">{{ key|replace('_', ' ')|title }}</span><span>{{ value }}</span></div>
+          {% endfor %}
+        </div>
+      {% endmacro %}
       {% for domain, data in session_record.patient_snapshot.domains.items() %}
-        {% if data.records or data.availability == 'unavailable' %}
-        <details class="context-domain"><summary>{{ domain|replace('_', ' ')|title }} · {{ data.availability }}</summary>
-          {% for record in data.records %}<article class="source-record"><strong>{{ record.source_id }}</strong><span>{{ record.finding|tojson }}</span><small>{{ record.age_label }} · observed {{ record.observed_at }}</small></article>{% endfor %}
-          {% if not data.records and data.availability == 'unavailable' %}<p class="muted">Data unavailable in this synthetic chart.</p>{% endif %}
+        <details class="context-domain">
+          <summary><span>{{ domain|replace('_', ' ')|title }}</span><span class="availability-badge availability-{{ data.availability }}">{{ data.availability|title }}</span></summary>
+          {% if data.records %}
+            {% if domain in ['problems', 'medications'] %}
+              {% set records = data.records|sort(attribute='observed_at', reverse=true)|sort(attribute='finding.status') %}
+            {% else %}
+              {% set records = data.records|sort(attribute='observed_at', reverse=true) %}
+            {% endif %}
+            <div class="context-record-list">
+            {% for record in records %}
+              {% set finding = record.finding %}
+              {% set status_text = finding.status|default('')|lower %}
+              <article class="context-record{% if domain == 'code_status' and ('limited' in status_text or 'conflict' in status_text) %} context-record-warning{% endif %}">
+                <div class="context-record-meta"><time datetime="{{ record.observed_at }}">{{ record.observed_at[:10] }}</time><span>{{ record.source_id }}</span></div>
+                {% if domain == 'encounters' %}
+                  <div class="encounter-card-heading"><span class="context-field-label">Visit type</span><span class="record-type">{{ finding.visit_type|default('Visit type not recorded') }}</span></div>
+                  <p class="record-summary"><span class="context-field-label">Summary · </span>{{ finding.summary|default('Encounter summary not recorded.') }}</p>
+                {% elif domain == 'problems' %}
+                  <div class="record-title-row"><strong>{{ finding.problem|default('Problem not named') }}</strong>{% if finding.status %}<span class="record-status">{{ finding.status|replace('_', ' ')|title }}</span>{% endif %}</div>
+                  {{ detail_fields(finding, ['problem', 'status']) }}
+                {% elif domain == 'medications' %}
+                  <div class="record-title-row"><strong>{{ finding.name|default('Medication not named') }}</strong>{% if finding.status %}<span class="record-status">{{ finding.status|replace('_', ' ')|title }}</span>{% endif %}</div>
+                  {{ detail_fields(finding, ['name', 'status']) }}
+                {% elif domain == 'allergies' %}
+                  <div class="record-title-row"><strong>{{ finding.substance|default('Allergen not specified') }}</strong>{% if finding.status %}<span class="record-status">{{ finding.status|replace('_', ' ')|title }}</span>{% endif %}</div>
+                  {{ detail_fields(finding, ['substance', 'status']) }}
+                {% elif domain == 'weights' %}
+                  <div class="record-title-row"><strong class="record-measurement">{{ finding.kg|default('Not recorded') }} kg</strong>{% if finding.provenance %}<span class="record-status">{{ finding.provenance|replace('-', ' ')|title }}</span>{% endif %}</div>
+                  {{ detail_fields(finding, ['kg', 'provenance']) }}
+                {% elif domain == 'code_status' %}
+                  <strong class="record-primary">{{ finding.status|default('Status not recorded')|replace('_', ' ')|title }}</strong>
+                  {{ detail_fields(finding, ['status']) }}
+                {% elif domain == 'labs' %}
+                  <strong class="record-primary">{{ finding.test|default('Lab result') }}</strong>
+                  {% if finding.value is defined %}<p class="record-result">{{ finding.value }} {{ finding.units|default('') }}</p>{% endif %}
+                  {{ detail_fields(finding, ['test', 'value', 'units']) }}
+                  {% if record.age_label == 'historical' %}<span class="historical-label">Historical result</span>{% endif %}
+                {% elif domain == 'procedures' %}
+                  <strong class="record-primary">{{ finding.procedure|default('Procedure not named') }}</strong>
+                  {{ detail_fields(finding, ['procedure']) }}
+                {% elif domain in ['imaging', 'ecg'] %}
+                  <strong class="record-primary">{{ 'Imaging report' if domain == 'imaging' else 'ECG report' }}</strong>
+                  <p class="record-summary">{{ finding.report|default('Report text not recorded.') }}</p>
+                  {{ detail_fields(finding, ['report']) }}
+                {% elif domain == 'notes' %}
+                  <p class="record-summary">{{ finding.text|default('Note text not recorded.') }}</p>
+                  {{ detail_fields(finding, ['text']) }}
+                {% else %}
+                  {{ detail_fields(finding) }}
+                {% endif %}
+                <small class="record-age">{{ record.age_label|replace('_', ' ')|title }}</small>
+              </article>
+            {% endfor %}
+            </div>
+          {% elif data.availability == 'unavailable' %}
+            <p class="context-empty">Data unavailable in this synthetic chart.</p>
+          {% else %}
+            <p class="context-empty">No records listed in this synthetic chart.</p>
+          {% endif %}
         </details>
-        {% endif %}
       {% endfor %}
     </aside>
   </div>

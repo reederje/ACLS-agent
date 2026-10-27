@@ -1,5 +1,9 @@
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()  # Does not override variables already set in the process environment.
+
 
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "local-development-only-change-before-deploy")
@@ -14,9 +18,9 @@ class Config:
     WTF_CSRF_TIME_LIMIT = 3600
     DISPLAY_TIMEZONE = os.getenv("DISPLAY_TIMEZONE", "UTC")
     AI_PROVIDER = os.getenv("AI_PROVIDER", "mock").lower()
-    AI_TIMEOUT_SECONDS = float(os.getenv("AI_TIMEOUT_SECONDS", "15"))
-    AZURE_OPENAI_BASE_URL = os.getenv("AZURE_OPENAI_BASE_URL", "")
-    AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "")
-    AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY", "")
+    AI_TIMEOUT_SECONDS = float(os.getenv("AI_TIMEOUT_SECONDS", "30"))
+    AI_SUMMARY_BACKGROUND = True
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.5")
     PATIENT_FIXTURE_DIR = os.getenv("PATIENT_FIXTURE_DIR", "app/fixtures/patients")
-    PROTOCOL_RULESET_VERSION = os.getenv("PROTOCOL_RULESET_VERSION", "2025.0-unverified")
+    PROTOCOL_RULESET_VERSION = "2025-AHA-adult-arrest-v1"

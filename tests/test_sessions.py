@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 from .conftest import login
@@ -71,8 +72,8 @@ def test_hold_assessment_resume_requires_explicit_rhythm_and_pulse(client):
     assessment = action(
         client, session_id, lease, held.json["revision"], "rhythm_assessment",
         details={
-            "rhythm": "unable_to_determine",
-            "pulse": "unknown",
+            "rhythm": "vt",
+            "pulse": "absent",
             "heart_rate_bpm": 121,
             "stable": False,
             "qrs_width": "wide",
@@ -81,7 +82,7 @@ def test_hold_assessment_resume_requires_explicit_rhythm_and_pulse(client):
     )
     assert assessment.status_code == 200
     saved_assessment = next(event for event in assessment.json["events"] if event["type"] == "rhythm_assessment")
-    assert saved_assessment["payload"] == {"rhythm": "unable_to_determine", "pulse": "unknown"}
+    assert saved_assessment["payload"] == {"rhythm": "vt", "pulse": "absent"}
     resumed = action(client, session_id, lease, assessment.json["revision"], "resume")
     assert resumed.status_code == 200
     assert resumed.json["compression_status"] == "running"
@@ -102,6 +103,33 @@ def test_rhythm_assessment_rejects_missing_idempotency_key(client):
     )
     assert response.status_code == 400
     assert "idempotency" in response.json["error"].lower()
+
+
+def test_rhythm_assessment_enforces_implied_pulse_except_for_vt(client):
+    login(client, "test-recorder", "test-recorder-password-123")
+    created = create_session(client)
+    session_id, lease = created.json["session_id"], created.json["lease_token"]
+    started = action(client, session_id, lease, 1, "start")
+
+    invalid_vf = action(
+        client, session_id, lease, started.json["revision"], "rhythm_assessment",
+        details={"rhythm": "vf", "pulse": "present"},
+    )
+    assert invalid_vf.status_code == 400
+
+    vt_assessment = action(
+        client, session_id, lease, started.json["revision"], "rhythm_assessment",
+        details={"rhythm": "vt", "pulse": "present"},
+    )
+    assert vt_assessment.status_code == 200
+    assert vt_assessment.json["rhythm_assessment"] == {"rhythm": "vt", "pulse": "present"}
+
+    asystole_assessment = action(
+        client, session_id, lease, vt_assessment.json["revision"], "rhythm_assessment",
+        details={"rhythm": "asystole", "pulse": "absent"},
+    )
+    assert asystole_assessment.status_code == 200
+    assert asystole_assessment.json["rhythm_assessment"] == {"rhythm": "asystole", "pulse": "absent"}
 
 
 def test_conflicting_code_status_requires_acknowledgement(client):
@@ -144,7 +172,22 @@ def test_read_only_board_and_recorder_workspace_render(client):
     login(client, "test-recorder", "test-recorder-password-123")
     created = create_session(client)
     session_id = created.json["session_id"]
-    assert client.get(f"/sessions/{session_id}").status_code == 200
+    workspace = client.get(f"/sessions/{session_id}")
+    assert workspace.status_code == 200
+    assert b"Adult cardiac-arrest guidance" in workspace.data
+    assert b"high-quality-cpr-dialog" in workspace.data
+    assert b"shock-recommendations-dialog" in workspace.data
+    assert b"Next steps" in workspace.data
+    assert b"Ventricular Fibrillation (VF)" in workspace.data
+    assert b"Ventricular Tachycardia (VT)" in workspace.data
+    assert b"Pulseless Electrical Activity (PEA)" in workspace.data
+    assert b">Asystole</option>" in workspace.data
+    assert b"Return of Spontaneous Circulation (ROSC)" in workspace.data
+    assert b'id="pulse-choice-field" hidden' in workspace.data
+    script = client.get("/static/js/session.js").get_data(as_text=True)
+    assert 'vf: "VF", vt: "VT"' in script
+    assert b'value="1" required' in workspace.data
+    assert b'value="IV">IV</option><option value="IO">IO</option>' in workspace.data
     board = client.get(f"/board/{session_id}")
     assert board.status_code == 200
     assert b"READ ONLY" in board.data
@@ -222,3 +265,61 @@ def test_rosc_ends_session_and_prevents_restart(client):
     assert ended.json["compression_status"] == "stopped"
     restart = action(client, session_id, lease, ended.json["revision"], "start")
     assert restart.status_code == 409
+
+
+def test_adult_arrest_guidance_updates_from_documented_rhythm_without_creating_events(client):
+    login(client, "test-recorder", "test-recorder-password-123")
+    created = create_session(client)
+    session_id, lease = created.json["session_id"], created.json["lease_token"]
+    started = action(client, session_id, lease, 1, "start")
+    initial = client.get(f"/api/sessions/{session_id}/state").json
+    assert initial["recommendations"]["status"] == "assessment_required"
+    assert initial["recommendations"]["needs_rhythm_assessment"] is True
+    assert initial["recommendations"]["next_steps"][0]["action"] == "pulse_check"
+    assert len(initial["events"]) == len(started.json["events"])
+
+    assessed = action(
+        client,
+        session_id,
+        lease,
+        started.json["revision"],
+        "rhythm_assessment",
+        details={"rhythm": "vf", "pulse": "absent"},
+    )
+    recommendations = assessed.json["recommendations"]
+    assert recommendations["status"] == "active"
+    assert next(item for item in recommendations["recommendations"] if item["id"] == "adult-arrest-shock")
+    event_count = len(assessed.json["events"])
+    refreshed = client.get(f"/api/sessions/{session_id}/state").json
+    assert len(refreshed["events"]) == event_count
+    assert refreshed["recommendations"]["ruleset_version"] == recommendations["ruleset_version"]
+
+
+def test_epinephrine_documentation_resets_three_to_five_minute_next_step(client):
+    login(client, "test-recorder", "test-recorder-password-123")
+    created = create_session(client)
+    session_id, lease = created.json["session_id"], created.json["lease_token"]
+    started = action(client, session_id, lease, 1, "start")
+    assessed = action(
+        client, session_id, lease, started.json["revision"], "rhythm_assessment",
+        details={"rhythm": "pea", "pulse": "absent"},
+    )
+    step = next(item for item in assessed.json["recommendations"]["next_steps"] if item["id"] == "adult-arrest-epinephrine")
+    assert step["dose"] == 1
+    assert step["units"] == "mg"
+
+    administered_at = assessed.json["server_time"]
+    response = client.post(
+        f"/api/sessions/{session_id}/events",
+        headers={"X-Recorder-Lease": lease},
+        json={
+            "event_type": "medication_admin",
+            "payload": {"title": "Epinephrine", "dose": 1, "units": "mg", "route": "IO", "occurred_at": administered_at},
+            "idempotency_key": str(uuid4()),
+            "expected_revision": assessed.json["revision"],
+        },
+    )
+    assert response.status_code == 201
+    repeat = next(item for item in response.json["recommendations"]["next_steps"] if item["id"] == "adult-arrest-epinephrine")
+    expected = datetime.fromisoformat(administered_at.replace("Z", "+00:00")) + timedelta(minutes=3)
+    assert repeat["due_at"] == expected.isoformat().replace("+00:00", "Z")

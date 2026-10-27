@@ -1,10 +1,10 @@
 # Resuscitation Application (synthetic prototype)
 
-This repository implements the clinical prototype described in `resuscitation_app_specification.md`. It is restricted to authored synthetic cases and must not be used to guide care for real patients. Protocol-specific clinical guidance is not enabled until verified against the cited 2025 AHA sources and reviewed; software tests are not clinical validation.
+This repository implements the clinical prototype described in `resuscitation_app_specification.md`. It is restricted to authored synthetic cases and must not be used to guide care for real patients. Deterministic advisory guidance is enabled only for the clinician-approved adult cardiac-arrest flow; all other ACLS/PALS pathways remain disabled. Software tests are not clinical validation.
 
 ## Current milestone
 
-The current local prototype includes a Flask application factory, SQLAlchemy persistence, hashed recorder/viewer accounts, CSRF protection, basic login throttling, ten validated synthetic patient fixtures, calendar-month context projection, session creation, explicit lifecycle/workflow actions, idempotent event writes, single-recorder lease/takeover, derived timers, a desktop recording workspace, and a read-only status board. This milestone provides documentation controls only; validated clinical guidance and AI summaries are not enabled.
+The current local prototype includes a Flask application factory, SQLAlchemy persistence, hashed recorder/viewer accounts, CSRF protection, basic login throttling, ten validated synthetic patient fixtures, calendar-month context projection, session creation, explicit lifecycle/workflow actions, idempotent event writes, single-recorder lease/takeover, derived timers, a desktop recording workspace, a read-only status board, and deterministic adult-arrest recommendations based on recorded rhythm/pulse and interventions. Recommendations do not record events or calculate medication doses/routes. AI summaries and other clinical pathways are not enabled.
 
 For timer transitions and event-flow behavior, run `python -m pytest`. `flask --app wsgi.py validate-fixtures` verifies the ten-case fixture matrix.
 
@@ -42,7 +42,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Before running, edit `.env` and replace `SECRET_KEY` with a unique random value. Keep `.env` private and do not commit passwords, API keys, or real patient data. Local settings use SQLite and `AI_PROVIDER=mock`; no Azure services are contacted or provisioned.
+Before running, edit `.env` and replace `SECRET_KEY` with a unique random value. Keep `.env` private and do not commit passwords, API keys, or real patient data. Local settings use SQLite and `AI_PROVIDER=mock`; set `AI_PROVIDER=openai`, `OPENAI_API_KEY`, and optionally `OPENAI_MODEL` (default `gpt-5.5`) in `.env` to enable the AI summary.
 
 ### Initialize, create accounts, and start
 
@@ -64,7 +64,7 @@ flask --app wsgi.py run --host 127.0.0.1 --port 5000
 
 Open <http://127.0.0.1:5000/> in a browser and sign in with the account you created. The recorder can select a synthetic case, choose a workflow, and create a session. A viewer account is read-only. Stop the development server with `Ctrl+C`.
 
-The development server is not for production. Clinical guidance and AI summaries are not enabled in the current milestone; the app is synthetic-only.
+The development server is not for production. The adult-arrest guidance is advisory and synthetic-only, and is not validated for live clinical use. AI summaries and other clinical pathways are not enabled.
 
 ### Run tests
 

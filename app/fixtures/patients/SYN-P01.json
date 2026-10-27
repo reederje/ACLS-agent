@@ -2,7 +2,7 @@
   "patient_id":"SYN-P01","display_name":"Fictional Patient Finch","scenario_reference_time":"relative-to-session-anchor",
   "demographics":{"age_display":"4 years","age_years":4,"population":"pediatric","weight_kg":16,"weight_provenance":"measured","code_status":"Full code"},"suggested_workflow":"cardiac_arrest",
   "domains":{
-    "encounters":{"availability":"available","records":[{"source_id":"P01-ENC-1","observed_offset_days":-16,"available_offset_days":-16,"finding":{"summary":"Emergency visit for viral respiratory symptoms."}}]},
+    "encounters":{"availability":"available","records":[{"source_id":"P01-ENC-1","observed_offset_days":-16,"available_offset_days":-16,"finding":{"visit_type":"ED","summary":"Emergency visit for viral respiratory symptoms."}}]},
     "problems":{"availability":"available","records":[{"source_id":"P01-PRB-1","observed_offset_days":-16,"available_offset_days":-16,"ongoing":true,"finding":{"problem":"Recent respiratory illness","status":"active"}}]},
     "medications":{"availability":"available","records":[{"source_id":"P01-MED-1","observed_offset_days":-14,"available_offset_days":-14,"ongoing":true,"finding":{"name":"saline nasal spray","status":"caregiver-reported"}}]},
     "allergies":{"availability":"empty","records":[]},"weights":{"availability":"available","records":[{"source_id":"P01-WGT-1","observed_offset_days":-16,"available_offset_days":-16,"ongoing":true,"finding":{"kg":16,"provenance":"measured"}}]},

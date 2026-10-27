@@ -2,7 +2,7 @@
   "patient_id":"SYN-P03","display_name":"Fictional Patient Harbor","scenario_reference_time":"relative-to-session-anchor",
   "demographics":{"age_display":"8 months","age_years":0.67,"population":"pediatric","weight_kg":8,"weight_provenance":"measured","code_status":"Full code"},"suggested_workflow":"bradycardia_with_pulse",
   "domains":{
-    "encounters":{"availability":"available","records":[{"source_id":"P03-ENC-1","observed_offset_days":-9,"available_offset_days":-9,"finding":{"summary":"Urgent assessment for bronchiolitis symptoms."}}]},
+    "encounters":{"availability":"available","records":[{"source_id":"P03-ENC-1","observed_offset_days":-9,"available_offset_days":-9,"finding":{"visit_type":"Ambulatory","summary":"Urgent assessment for bronchiolitis symptoms."}}]},
     "problems":{"availability":"available","records":[{"source_id":"P03-PRB-1","observed_offset_days":-9,"available_offset_days":-9,"ongoing":true,"finding":{"problem":"Respiratory illness","status":"active"}}]},
     "medications":{"availability":"available","records":[{"source_id":"P03-MED-1","observed_offset_days":-8,"available_offset_days":-8,"ongoing":true,"finding":{"name":"acetaminophen","status":"caregiver-reported","dose":"dose not recorded"}}]},
     "allergies":{"availability":"empty","records":[]},"weights":{"availability":"available","records":[{"source_id":"P03-WGT-1","observed_offset_days":-9,"available_offset_days":-9,"ongoing":true,"finding":{"kg":8,"provenance":"measured"}}]},

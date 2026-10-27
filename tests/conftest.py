@@ -20,6 +20,8 @@ def app(tmp_path):
         "SQLALCHEMY_DATABASE_URI": f"sqlite:///{database_path.as_posix()}",
         "PATIENT_FIXTURE_DIR": str(ROOT / "app" / "fixtures" / "patients"),
         "SECRET_KEY": "test-only-secret-key",
+        "AI_SUMMARY_BACKGROUND": False,
+        "AI_PROVIDER": "mock",
     })
     with application.app_context():
         db.create_all()

@@ -18,6 +18,7 @@
   };
   const elapsedFrom = (time) => time ? Math.max(0, (currentEpoch() - Date.parse(time)) / 1000) : 0;
   const pretty = (value) => String(value || "").replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
+  const rhythmLabel = (value) => ({ vf: "VF", vt: "VT", pea: "PEA", rosc: "ROSC" })[value] || pretty(value);
   const localTime = (time) => time ? new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZoneName: "short" }) : "—";
 
   function renderTimeline(events) {
@@ -59,10 +60,11 @@
     document.querySelector("#board-workflow").textContent = pretty(state.workflow);
     document.querySelector("#board-lifecycle").textContent = `${pretty(state.lifecycle)}${state.outcome ? ` · ${pretty(state.outcome)}` : ""}`;
     const assessment = state.rhythm_assessment;
-    document.querySelector("#board-rhythm").textContent = assessment ? pretty(assessment.rhythm) : "Not assessed";
+    document.querySelector("#board-rhythm").textContent = assessment ? rhythmLabel(assessment.rhythm) : "Not assessed";
     document.querySelector("#board-pulse").textContent = assessment ? `Pulse ${pretty(assessment.pulse)}${assessment.heart_rate_bpm ? ` · ${assessment.heart_rate_bpm} bpm` : ""}` : "Pulse unknown";
     document.querySelector("#board-compression").textContent = pretty(state.compression_status);
-    document.querySelector("#board-next").textContent = state.workflow === "cardiac_arrest" && state.compression_status === "running" ? "Documented compression cycle timer only; no treatment recommendation" : "No protocol actions enabled";
+    document.querySelector("#board-next").textContent = state.recommendations?.summary || "No recommendation available";
+    document.querySelector("#board-guidance").textContent = state.recommendations?.status === "not_applicable" ? "No recommendation for this pathway" : `Advisory only · ${state.recommendations?.ruleset_version || "ruleset unavailable"} · synthetic simulation`;
     renderTimeline(state.events);
     if (successfulSync) {
       serverEpochMs = Date.parse(state.server_time);
