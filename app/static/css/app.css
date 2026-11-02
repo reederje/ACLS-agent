@@ -41,7 +41,7 @@ select, textarea { min-height: 44px; border: 1px solid #83939d; border-radius: 6
 .workspace { width: 100%; margin: 0 auto; }
 .workspace-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(270px, 1fr); align-items: start; gap: 1rem; margin-top: 1rem; }
 .main-column { min-width: 0; display: grid; gap: 1rem; }
-.overview-row { display: grid; grid-template-columns: minmax(220px, .72fr) minmax(0, 1.65fr); gap: .75rem; align-items: stretch; }
+.overview-row { position: sticky; top: 37px; z-index: 4; display: grid; grid-template-columns: minmax(220px, .72fr) minmax(0, 1.65fr); gap: .75rem; align-items: stretch; padding: .5rem 0; background: #f3f6f8; }
 .patient-summary { display: flex; flex-direction: column; justify-content: space-between; gap: .8rem; padding: 1rem; border-top: 4px solid #d79a19; }
 .patient-summary-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: .45rem; }
 .patient-summary-heading > div { min-width: 0; }
@@ -191,3 +191,24 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .patient-row-selected { background: #eaf4f7; }
 .patient-row-radio { width: 1.1rem; height: 1.1rem; accent-color: #17657c; }
 @media (max-width: 700px) { .patient-session-controls { grid-template-columns: 1fr; } .patient-session-controls > label[for], .patient-session-controls select { grid-column: 1; grid-row: auto; } }
+@media (max-width: 760px) { .overview-row { position: static; padding: 0; } }
+.chip-field { display: grid; gap: .3rem; margin-top: .6rem; }
+.chip-label { color: #344750; font-size: .8rem; font-weight: 800; }
+.chip-row { display: flex; flex-wrap: wrap; gap: .5rem; }
+.chip { min-height: 44px; padding: .45rem .9rem; border: 1px solid #6e8c98; border-radius: 999px; background: #f8fbfc; color: #073b4c; font: inherit; font-weight: 700; cursor: pointer; }
+.chip:hover { background: #e9f4f7; }
+.chip[aria-pressed="true"] { border-color: #075b77; background: #075b77; color: white; }
+.chip-detail { display: grid; gap: .4rem; }
+.rhythm-groups { display: grid; gap: .8rem; margin-top: .8rem; }
+.rhythm-group { display: grid; gap: .35rem; }
+.rhythm-button { min-height: 54px; min-width: 120px; font-size: 1.05rem; }
+.next-step-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.next-step-actions .next-step-button { width: auto; flex: 1 1 140px; }
+.next-step-actions .rhythm-groups { width: 100%; margin-top: 0; }
+.button.is-armed { outline: 3px solid #fff1c7; outline-offset: 2px; animation: armed-pulse 1s ease-in-out infinite; }
+@keyframes armed-pulse { 50% { opacity: .75; } }
+.undo-button { min-height: 32px; padding: .2rem .6rem; font-size: .8rem; color: #073b4c; border-color: #6e8c98; }
+.event-heading { align-items: center; }
+.workflow-button.is-suggested { outline: 3px solid #b37909; outline-offset: 2px; }
+.workflow-button.is-suggested::after { content: " ★"; }
+.patient-session-controls > .chip-row { grid-column: 1 / -1; }

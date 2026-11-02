@@ -19,6 +19,8 @@ from .protocol_rules import adult_cardiac_arrest_guidance
 sessions = Blueprint("sessions", __name__)
 LEASE_SESSION_KEY = "recorder_leases"
 VALID_WORKFLOWS = {"cardiac_arrest", "bradycardia_with_pulse", "tachycardia_with_pulse"}
+# Lifecycle and compression-state events are excluded because session state is stored outside the event log.
+UNDOABLE_EVENT_TYPES = {"rhythm_assessment", "medication_admin", "infusion", "electrical_therapy", "airway", "procedure", "assessment", "other"}
 
 
 def _repository() -> JsonPatientRepository:
@@ -262,8 +264,8 @@ def session_action(session_id: str):
             return _error("Rhythm assessment requires an active session.", 409)
         rhythm = details.get("rhythm")
         pulse = details.get("pulse")
-        if rhythm not in {"vf", "vt", "pea", "asystole", "rosc"}:
-            return _error("Choose VF, VT, PEA, asystole, or ROSC.", 400)
+        if rhythm not in {"vf", "vt", "pea", "asystole", "unknown", "rosc"}:
+            return _error("Choose VF, VT, PEA, asystole, unknown, or ROSC.", 400)
         if rhythm == "vt":
             if pulse not in {"present", "absent"}:
                 return _error("For ventricular tachycardia, document whether a pulse is present or absent.", 400)
@@ -392,12 +394,6 @@ def record_event(session_id: str):
             details["energy_joules"] = energy
         elif not details.get("settings"):
             return _error("Record pacing settings when documenting pacing.", 400)
-    if event_type == "airway" and (not details.get("device") or not details.get("outcome")):
-        return _error("Airway documentation requires device/method and attempt outcome or confirmation.", 400)
-    if event_type == "procedure" and not details.get("site"):
-        return _error("Access/procedure documentation requires site or procedure details.", 400)
-    if event_type == "assessment" and not details.get("finding"):
-        return _error("Assessment documentation requires a finding or value with units.", 400)
     if event_type == "other" and not details.get("note"):
         return _error("Other documentation requires free-text details.", 400)
     raw_occurrence = details.pop("occurred_at", None)
@@ -423,6 +419,35 @@ def record_event(session_id: str):
             return jsonify(_state(record)), 200
         return _error("Event write conflict. Refresh and retry with the same idempotency key.", 409)
     return jsonify(_state(record)), 201
+
+
+@sessions.post("/api/sessions/<session_id>/events/<event_id>/undo")
+@login_required
+@role_required("recorder")
+def undo_event(session_id: str, event_id: str):
+    record = _session_or_404(session_id)
+    payload = request.get_json(silent=True) or {}
+    _check_lease(record)
+    if record.lifecycle != "active":
+        return _error("Entries can only be undone during an active session.", 409)
+    _check_revision(record, payload)
+    event = Event.query.filter_by(id=event_id, session_id=record.id, effective=True).first()
+    if event is None:
+        return _error("That entry was not found or has already been undone.", 404)
+    if event.event_type not in UNDOABLE_EVENT_TYPES:
+        return _error("This kind of entry cannot be undone.", 409)
+    event.effective = False
+    db.session.add(AuditEntry(
+        session_id=record.id,
+        event_id=event.id,
+        action="undo",
+        old_value={"event_type": event.event_type, "payload": event.payload},
+        reason="Recorder undid this entry.",
+        actor_id=current_user().id,
+    ))
+    record.revision += 1
+    db.session.commit()
+    return jsonify(_state(record))
 
 
 @sessions.post("/api/sessions/<session_id>/takeover")

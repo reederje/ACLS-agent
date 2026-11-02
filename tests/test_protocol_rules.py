@@ -43,12 +43,24 @@ def test_inactive_or_nonadult_pathways_do_not_receive_adult_rules():
     assert guidance(workflow="bradycardia_with_pulse")["status"] == "not_applicable"
 
 
-def test_initial_active_arrest_requests_explicit_rhythm_and_pulse():
+def test_initial_active_arrest_offers_initial_rhythm_card_and_no_pulse_check():
     result = guidance()
-    assert result["status"] == "assessment_required"
-    assert result["needs_rhythm_assessment"] is True
-    assert result["recommendations"][0]["id"] == "adult-arrest-rhythm-pulse-assessment"
+    assert result["status"] == "active"
+    assert result["needs_rhythm_assessment"] is False
+    assert result["recommendations"][0]["id"] == "adult-arrest-continue-cpr"
+    assert [step["action"] for step in result["next_steps"]] == ["record_initial_rhythm"]
     assert result["ruleset_version"] == ADULT_ARREST_RULESET_VERSION
+
+
+def test_unknown_initial_rhythm_is_nonshockable_and_first_pulse_check_waits_two_minutes():
+    events = [event("rhythm_assessment", 5, {"rhythm": "unknown", "pulse": "absent"}, 3)]
+    result = guidance(events=events, now=ANCHOR + timedelta(seconds=70))
+    assert result["status"] == "active"
+    assert by_id(result, "adult-arrest-nonshockable-cpr")
+    assert not any(item["id"] == "adult-arrest-shock" for item in result["recommendations"])
+    check = next(step for step in result["next_steps"] if step["id"] == "adult-arrest-next-pulse-check")
+    assert check["due_at"] == (ANCHOR + timedelta(minutes=2)).isoformat().replace("+00:00", "Z")
+    assert any(step["id"] == "adult-arrest-epinephrine" for step in result["next_steps"])
 
 
 def test_ready_session_exposes_start_as_first_next_step():
@@ -305,3 +317,16 @@ def test_rules_are_pure_and_do_not_modify_or_add_events():
     original = deepcopy(events)
     guidance(events=events)
     assert events == original
+
+
+def test_initial_rhythm_card_is_gone_once_pulse_check_starts_or_rhythm_is_recorded():
+    def ids(result):
+        return {step["id"] for step in result["next_steps"]}
+
+    assert "adult-arrest-initial-rhythm" in ids(guidance(now=ANCHOR + timedelta(seconds=90)))
+    assert "adult-arrest-initial-rhythm" not in ids(guidance(now=ANCHOR + timedelta(minutes=2, seconds=5)))
+    held = guidance(compression_status="held", hold_anchor_at=ANCHOR + timedelta(seconds=125), now=ANCHOR + timedelta(seconds=130))
+    assert "adult-arrest-initial-rhythm" not in ids(held)
+    recorded = [event("rhythm_assessment", 135, {"rhythm": "pea", "pulse": "absent"}, 3)]
+    after = guidance(events=recorded, now=ANCHOR + timedelta(seconds=140))
+    assert "adult-arrest-initial-rhythm" not in ids(after)

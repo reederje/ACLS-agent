@@ -19,7 +19,7 @@
         <section class="timer-panel card" aria-label="Session timers and state">
         <div class="timer-primary"><span class="eyebrow">Total elapsed</span><strong id="elapsed-timer">00:00:00</strong><span id="session-state-label">Ready to start</span></div>
         <div class="timer-secondary"><span class="eyebrow" id="cycle-caption">Compression cycle</span><strong id="cycle-timer">—</strong><span id="compression-state">No compressions documented</span></div>
-        <div class="timer-secondary"><span class="eyebrow">Documented rhythm / pulse</span><strong id="rhythm-state">Not assessed</strong><span id="rhythm-details">No assessment recorded</span></div>
+        <div class="timer-secondary"><span class="eyebrow">Documented rhythm / pulse</span><strong id="rhythm-state">Unknown</strong><span id="rhythm-details">No assessment recorded</span></div>
         </section>
       </div>
 
@@ -59,49 +59,41 @@
           <a href="https://cpr.heart.org/-/media/CPR-Files/CPR-Guidelines-Files/2025-Algorithms/Algorithm-ACLS-CA-250527.pdf?sc_lang=en" target="_blank" rel="noopener">Open the AHA source PDF</a>
         </dialog>
         {% if can_record %}<button id="takeover-button" class="button button-quiet" type="button" hidden>Take over recorder lease</button>{% endif %}
-        <details class="secondary-controls">
-          <summary>Other session controls</summary>
-          <p class="muted" id="start-caption"></p>
-          <div id="ready-actions" class="action-row" hidden><button class="button button-primary button-large" data-action="start">Start code</button></div>
-          <div id="active-actions" class="action-row" hidden>
+        <p class="muted" id="start-caption"></p>
+        <div id="ready-actions" class="action-row" hidden><button class="button button-primary button-large" data-action="start">Start code</button></div>
+        <div id="active-actions" class="action-row" hidden>
           <button class="button button-primary" data-action="hold">Compressions held</button>
           <button class="button button-secondary" data-action="resume" hidden>Compressions resumed</button>
           <button class="button button-secondary" data-action="start_arrest" hidden>Cardiac arrest / start compressions</button>
           <button class="button button-secondary" data-action="cpr_start" hidden>Start CPR (pulse-present workflow)</button>
-          <button class="button button-danger" data-action="rosc">ROSC — end session</button>
+          <button class="button button-danger" data-action="rosc" data-label="ROSC — end session">ROSC — end session</button>
           <button class="button button-quiet" data-action="end">End session</button>
-          </div>
+        </div>
         <form id="end-confirm" class="confirmation-form" hidden>
-          <label for="end-reason">Session end reason</label>
-          <input id="end-reason" name="outcome" required maxlength="100" placeholder="For example: simulation stopped">
+          <p class="dialog-full-width"><strong>End session — choose a reason</strong> (ends the session immediately).</p>
+          <div id="end-reason-chips" class="chip-row" role="group" aria-label="End reason"></div>
+          <label for="end-reason">Other reason</label>
+          <input id="end-reason" name="outcome" maxlength="100" placeholder="Type a reason, then confirm">
           <button class="button button-danger" type="submit">Confirm end session</button>
           <button class="button button-quiet" type="button" data-cancel="end">Cancel</button>
           <p class="form-error" role="alert" hidden></p>
         </form>
-        <div id="rosc-confirm" class="confirmation-form" role="group" aria-label="Confirm ROSC" hidden>
-          <p><strong>Confirm ROSC?</strong> This records ROSC and ends the session immediately.</p>
-          <button class="button button-danger" type="button" id="confirm-rosc">Record ROSC and end</button>
-          <button class="button button-quiet" type="button" data-cancel="rosc">Cancel</button>
-        </div>
         {% if can_record %}
         <form id="takeover-form" class="confirmation-form" hidden>
-          <label for="takeover-reason">Reason for recorder takeover</label>
-          <input id="takeover-reason" name="reason" required minlength="4" maxlength="500" placeholder="Document the handoff reason">
+          <p class="dialog-full-width"><strong>Take over recorder lease — choose a reason</strong> (audited).</p>
+          <div id="takeover-reason-chips" class="chip-row" role="group" aria-label="Takeover reason"></div>
+          <label for="takeover-reason">Other reason</label>
+          <input id="takeover-reason" name="reason" minlength="4" maxlength="500" placeholder="Type a reason, then confirm">
           <button class="button button-primary" type="submit">Confirm recorder takeover</button>
           <button class="button button-quiet" type="button" data-cancel="takeover">Cancel</button>
           <p class="form-error" role="alert" hidden></p>
         </form>
         {% endif %}
-        </details>
         <dialog class="guidance-dialog action-dialog" id="pulse-check-dialog" aria-labelledby="pulse-check-title">
           <div class="section-heading"><h2 id="pulse-check-title">Document rhythm and pulse</h2><button class="button button-quiet" type="button" data-close-guidance>Close</button></div>
-          <p class="muted">Record the observed rhythm and pulse separately. No findings are inferred and compressions are not restarted automatically.</p>
-          <form id="rhythm-form" class="inline-form">
-            <label>Rhythm<select name="rhythm" required><option value="" disabled selected>Select…</option><option value="vf">Ventricular Fibrillation (VF)</option><option value="vt">Ventricular Tachycardia (VT)</option><option value="pea">Pulseless Electrical Activity (PEA)</option><option value="asystole">Asystole</option><option value="rosc">Return of Spontaneous Circulation (ROSC)</option></select></label>
-            <label id="pulse-choice-field" hidden>Pulse<select name="pulse"><option value="" disabled selected>Select…</option><option value="present">Present</option><option value="absent">Absent</option></select></label>
-            <button class="button button-primary" type="submit">Save assessment</button>
-            <p class="form-error" id="rhythm-save-error" role="alert" hidden></p>
-          </form>
+          <p class="muted">Tap the observed rhythm to save it. No findings are inferred and compressions are not restarted automatically.</p>
+          <div id="rhythm-buttons" class="rhythm-groups"></div>
+          <p class="form-error" id="rhythm-save-error" role="alert" hidden></p>
         </dialog>
         <dialog class="guidance-dialog action-dialog" id="epinephrine-dialog" aria-labelledby="epinephrine-title">
           <div class="section-heading"><h2 id="epinephrine-title">Record epinephrine administration</h2><button class="button button-quiet" type="button" data-close-guidance>Close</button></div>
@@ -155,13 +147,13 @@
         <form id="event-form" class="event-form" hidden>
           <div class="section-heading"><h3 id="event-form-title">Document event</h3><button class="button button-quiet" type="button" id="cancel-event">Cancel</button></div>
           <div class="event-fields" id="event-fields"></div>
-          <button class="button button-primary" type="submit">Save documentation</button>
+          <button class="button button-primary" type="submit" id="event-submit">Record</button>
           <p class="form-error" role="alert" hidden></p>
         </form>
       </section>
 
       <section class="log-panel card">
-        <div class="section-heading"><div><p class="eyebrow">Chronological event stream</p><h2>Live event log</h2></div><span id="event-count" class="badge">0 events</span></div>
+        <div class="section-heading"><div><p class="eyebrow">Event stream · newest first</p><h2>Live event log</h2></div><span id="event-count" class="badge">0 events</span></div>
         <ol class="event-list" id="event-list" aria-live="polite"></ol>
       </section>
     </section>
@@ -264,4 +256,4 @@
   </div>
 </div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/session.js') }}" defer></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/catalog.js') }}" defer></script><script src="{{ url_for('static', filename='js/session.js') }}" defer></script>{% endblock %}

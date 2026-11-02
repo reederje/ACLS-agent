@@ -43,57 +43,338 @@
     return wrap;
   };
 
+  const catalog = window.QUICK_CATALOG;
+  let doc = null;
+  const TIME_OPTIONS = [
+    { label: "Now", value: 0 },
+    { label: "1 min ago", value: 1 },
+    { label: "2 min ago", value: 2 },
+    { label: "5 min ago", value: 5 },
+    { label: "Custom…", value: "custom" },
+  ];
+  const CHIP_CATEGORIES = ["medication_admin", "electrical_therapy", "airway", "procedure", "assessment"];
+  const UNDOABLE_TYPES = new Set(["rhythm_assessment", "medication_admin", "infusion", "electrical_therapy", "airway", "procedure", "assessment", "other"]);
+  const RHYTHM_GROUPS = [
+    { title: "Shockable", items: [{ label: "VF", rhythm: "vf", pulse: "absent" }, { label: "VT — pulseless", rhythm: "vt", pulse: "absent" }] },
+    { title: "Non-shockable", items: [{ label: "PEA", rhythm: "pea", pulse: "absent" }, { label: "Asystole", rhythm: "asystole", pulse: "absent" }, { label: "Unknown", rhythm: "unknown", pulse: "absent" }] },
+    { title: "Pulse present", pulsePresent: true, items: [{ label: "VT — with pulse", rhythm: "vt", pulse: "present" }, { label: "ROSC", rhythm: "rosc", pulse: "present" }] },
+  ];
+
+  function chipGroup(title, options, { scope, selected = null, onPick }) {
+    const wrap = document.createElement("div");
+    wrap.className = "chip-field";
+    if (title) {
+      const heading = document.createElement("span");
+      heading.className = "chip-label";
+      heading.textContent = title;
+      wrap.append(heading);
+    }
+    const row = document.createElement("div");
+    row.className = "chip-row";
+    row.setAttribute("role", "group");
+    row.setAttribute("aria-label", title || "Options");
+    for (const option of options) {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip";
+      chip.dataset.scope = scope;
+      chip.textContent = option.label;
+      chip.setAttribute("aria-pressed", String(option.value === selected));
+      chip.addEventListener("click", () => {
+        document.querySelectorAll(`.chip[data-scope="${scope}"]`).forEach((other) => other.setAttribute("aria-pressed", "false"));
+        chip.setAttribute("aria-pressed", "true");
+        onPick(option.value);
+      });
+      row.append(chip);
+    }
+    wrap.append(row);
+    return wrap;
+  }
+
+  function timeField() {
+    const wrap = document.createElement("div");
+    const custom = input("custom_time", "Custom time", "datetime-local");
+    custom.hidden = true;
+    const customInput = custom.querySelector("input");
+    customInput.addEventListener("input", () => { doc.customTime = customInput.value; });
+    wrap.append(chipGroup("Time", TIME_OPTIONS, {
+      scope: "doc-time",
+      selected: 0,
+      onPick: (value) => {
+        doc.time = value;
+        custom.hidden = value !== "custom";
+        if (value === "custom") {
+          customInput.value = localDateTimeValue(nowEpochMs());
+          doc.customTime = customInput.value;
+          customInput.focus();
+        }
+      },
+    }), custom);
+    return wrap;
+  }
+
+  function occurredAt() {
+    if (doc.time === "custom") return doc.customTime ? new Date(doc.customTime).toISOString() : null;
+    return new Date(nowEpochMs() - doc.time * 60000).toISOString();
+  }
+
+  function docComplete() {
+    const fields = doc.fields;
+    if (doc.category === "medication_admin") return Boolean(fields.title && fields.units && fields.dose > 0 && fields.route);
+    if (doc.category === "electrical_therapy") return fields.therapy_type === "pacing" ? Boolean(fields.settings) : Boolean(fields.therapy_type && fields.energy_joules > 0);
+    return Boolean(fields.title);
+  }
+
+  function autoRecord() {
+    if (doc?.mode === "chips" && doc.time !== "custom" && docComplete()) document.querySelector("#event-form").requestSubmit();
+  }
+
+  function renderChipForm(category) {
+    const holder = document.querySelector("#event-fields");
+    holder.replaceChildren();
+    doc = { mode: "chips", category, time: 0, customTime: "", fields: {} };
+    holder.append(timeField());
+    if (category === "medication_admin") renderMedicationChips(holder);
+    else if (category === "electrical_therapy") renderElectricalChips(holder);
+    else renderPresetChips(holder, category);
+  }
+
+  function renderMedicationChips(holder) {
+    const detail = document.createElement("div");
+    detail.className = "chip-detail";
+    const all = catalog.medications.flatMap((group) => group.items);
+    const clearScope = (scope) => document.querySelectorAll(`.chip[data-scope="${scope}"]`).forEach((chip) => chip.setAttribute("aria-pressed", "false"));
+    let medication = null;
+    const draw = () => {
+      detail.replaceChildren();
+      if (!medication) return;
+      if (medication.other) {
+        const name = input("custom_medication", "Medication name", "text", true);
+        name.querySelector("input").addEventListener("input", (event) => { doc.fields.title = event.target.value.trim(); });
+        const units = input("units", "Dose units", "text", true, "e.g., mg");
+        units.querySelector("input").addEventListener("input", (event) => { doc.fields.units = event.target.value.trim(); });
+        detail.append(name, units);
+      }
+      if (medication.doses.length) {
+        detail.append(chipGroup("Dose", medication.doses.map((dose) => ({ label: `${dose} ${medication.units}`, value: dose })), {
+          scope: "doc-dose",
+          selected: doc.fields.dose ?? null,
+          onPick: (dose) => { doc.fields.dose = dose; doc.fields.units = medication.units; autoRecord(); },
+        }));
+      }
+      const otherDose = input("other_dose", medication.doses.length ? "Other dose" : "Dose", "number");
+      otherDose.querySelector("input").addEventListener("input", (event) => {
+        clearScope("doc-dose");
+        doc.fields.dose = event.target.value === "" ? undefined : Number(event.target.value);
+        if (!medication.other) doc.fields.units = medication.units;
+      });
+      detail.append(otherDose);
+      detail.append(chipGroup("Route", catalog.routes.map((route) => ({ label: route, value: route })), {
+        scope: "doc-route",
+        selected: doc.fields.route ?? null,
+        onPick: (route) => { doc.fields.route = route; autoRecord(); },
+      }));
+    };
+    const pick = (choice) => {
+      medication = choice;
+      doc.fields = { route: doc.fields.route, title: choice.other ? "" : choice.name, units: choice.units };
+      draw();
+    };
+    for (const group of catalog.medications) {
+      holder.append(chipGroup(group.group, group.items.map((item) => ({ label: item.name, value: item.name })), {
+        scope: "doc-med",
+        onPick: (name) => pick(all.find((item) => item.name === name)),
+      }));
+    }
+    holder.append(chipGroup(null, [{ label: "Other medication…", value: "__other__" }], {
+      scope: "doc-med",
+      onPick: () => pick({ other: true, doses: [], units: "" }),
+    }), detail);
+  }
+
+  function renderElectricalChips(holder) {
+    const detail = document.createElement("div");
+    detail.className = "chip-detail";
+    const draw = () => {
+      detail.replaceChildren();
+      const type = doc.fields.therapy_type;
+      if (type === "pacing") {
+        const settings = input("settings", "Pacing settings", "text", true);
+        settings.querySelector("input").addEventListener("input", (event) => { doc.fields.settings = event.target.value.trim(); });
+        detail.append(settings);
+      } else if (type) {
+        detail.append(chipGroup("Delivered energy", catalog.shockEnergies.map((joules) => ({ label: `${joules} J`, value: joules })), {
+          scope: "doc-energy",
+          onPick: (joules) => { doc.fields.energy_joules = joules; autoRecord(); },
+        }));
+        const other = input("other_energy", "Other energy (J)", "number");
+        other.querySelector("input").addEventListener("input", (event) => {
+          document.querySelectorAll('.chip[data-scope="doc-energy"]').forEach((chip) => chip.setAttribute("aria-pressed", "false"));
+          doc.fields.energy_joules = event.target.value === "" ? undefined : Number(event.target.value);
+        });
+        detail.append(other);
+      }
+    };
+    holder.append(chipGroup("Therapy", [
+      { label: "Defibrillation", value: "defibrillation" },
+      { label: "Synchronized cardioversion", value: "synchronized_cardioversion" },
+      { label: "Pacing", value: "pacing" },
+    ], {
+      scope: "doc-therapy",
+      onPick: (type) => { doc.fields = { therapy_type: type, title: label(type) }; draw(); },
+    }), detail);
+  }
+
+  function renderPresetChips(holder, category) {
+    const detail = document.createElement("div");
+    detail.className = "chip-detail";
+    const options = [...catalog.presets[category].map((text) => ({ label: text, value: text })), { label: "Other…", value: "__other__" }];
+    holder.append(chipGroup("Choose", options, {
+      scope: "doc-preset",
+      onPick: (value) => {
+        detail.replaceChildren();
+        if (value === "__other__") {
+          doc.fields = {};
+          const text = input("title", "What was documented?", "text", true);
+          text.querySelector("input").addEventListener("input", (event) => { doc.fields.title = event.target.value.trim(); });
+          detail.append(text);
+          text.querySelector("input").focus();
+        } else {
+          doc.fields = { title: value };
+          autoRecord();
+        }
+      },
+    }), detail);
+  }
+
+  function rhythmButtons({ pulsePresent }) {
+    const wrap = document.createElement("div");
+    wrap.className = "rhythm-groups";
+    for (const group of RHYTHM_GROUPS) {
+      if (group.pulsePresent && !pulsePresent) continue;
+      const section = document.createElement("div");
+      section.className = "rhythm-group";
+      const heading = document.createElement("span");
+      heading.className = "chip-label";
+      heading.textContent = group.title;
+      const row = document.createElement("div");
+      row.className = "chip-row";
+      for (const item of group.items) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "button button-secondary rhythm-button";
+        button.dataset.rhythm = item.rhythm;
+        button.dataset.pulse = item.pulse;
+        button.textContent = item.label;
+        button.disabled = !canWrite();
+        row.append(button);
+      }
+      section.append(heading, row);
+      wrap.append(section);
+    }
+    return wrap;
+  }
+
+  function stepButton(text, attributes = {}, extraClass = "button-primary") {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `button ${extraClass} next-step-button`;
+    Object.assign(button.dataset, attributes);
+    button.textContent = text;
+    button.disabled = !canWrite();
+    return button;
+  }
+
+  const lastShockEnergy = () => [...(state?.events || [])].reverse()
+    .find((item) => item.type === "electrical_therapy" && item.payload?.therapy_type === "defibrillation" && item.payload?.energy_joules)?.payload.energy_joules ?? null;
+  const lastRoute = () => [...(state?.events || [])].reverse()
+    .find((item) => item.type === "medication_admin" && item.payload?.route)?.payload.route ?? null;
+
+  function buildStepActions(step) {
+    const actions = document.createElement("div");
+    actions.className = "next-step-actions";
+    const edit = (text) => stepButton(text, { nextStepAction: step.action, stepId: step.id }, "button-quiet");
+    if (step.action === "administer_epinephrine") {
+      const dose = step.dose ?? 1;
+      for (const route of step.routes || ["IV", "IO"]) actions.append(stepButton(`Epinephrine ${dose} mg ${route}`, { quick: "epinephrine", route, dose }));
+      actions.append(edit("Edit details"));
+    } else if (step.action === "record_shock") {
+      const last = lastShockEnergy();
+      const energies = [...new Set([...(last ? [last] : []), ...catalog.shockEnergies])];
+      for (const joules of energies) actions.append(stepButton(joules === last ? `Same as last · ${joules} J` : `Shock ${joules} J`, { quick: "shock", joules }));
+      actions.append(edit("Other energy"));
+    } else if (step.action === "administer_antiarrhythmic") {
+      const route = lastRoute() || "IV";
+      for (const [agent, option] of Object.entries(step.options || {})) {
+        if (!option.available || option.dose == null) continue;
+        actions.append(stepButton(`${label(agent)} ${option.dose} ${option.units} ${route}`, { quick: "antiarrhythmic", agent, dose: option.dose, units: option.units, route }));
+      }
+      actions.append(edit("Edit details"));
+    } else if (step.action === "record_initial_rhythm") {
+      actions.append(rhythmButtons({ pulsePresent: false }));
+    } else {
+      const text = ({
+        start: state?.workflow === "cardiac_arrest" ? "Start code" : "Start session",
+        pulse_check: state?.compression_status === "held" ? "Document rhythm and pulse" : "Start pulse check",
+        resume: "Resume compressions",
+        rosc: "Record ROSC",
+      })[step.action] || "Start action";
+      actions.append(stepButton(text, { nextStepAction: step.action, stepId: step.id }));
+    }
+    return actions;
+  }
+
+  async function quickRecord(data) {
+    const occurred = new Date(nowEpochMs()).toISOString();
+    let eventType = "medication_admin";
+    let payload;
+    if (data.quick === "epinephrine") payload = { title: "Epinephrine", dose: Number(data.dose), units: "mg", route: data.route };
+    else if (data.quick === "antiarrhythmic") payload = { title: label(data.agent), dose: Number(data.dose), units: data.units || "mg", route: data.route };
+    else {
+      eventType = "electrical_therapy";
+      payload = { title: "Defibrillation", therapy_type: "defibrillation", energy_joules: Number(data.joules) };
+    }
+    await write(`${api}/events`, { event_type: eventType, payload: { ...payload, occurred_at: occurred }, idempotency_key: crypto.randomUUID() });
+  }
+
+  async function recordRhythm(rhythm, pulse) {
+    const dialog = document.querySelector("#pulse-check-dialog");
+    const error = document.querySelector("#rhythm-save-error");
+    error.hidden = true;
+    const saved = await write(`${api}/actions`, { action: "rhythm_assessment", details: { rhythm, pulse }, idempotency_key: crypto.randomUUID() });
+    if (saved) dialog.close();
+    else if (dialog.open) { error.textContent = status.textContent; error.hidden = false; }
+  }
+
+  function openRhythmDialog() {
+    document.querySelector("#rhythm-buttons").replaceChildren(rhythmButtons({ pulsePresent: true }));
+    document.querySelector("#rhythm-save-error").hidden = true;
+    document.querySelector("#pulse-check-dialog").showModal();
+  }
+
+  let roscArmTimer = null;
+  function disarmRosc(button) {
+    window.clearTimeout(roscArmTimer);
+    delete button.dataset.armed;
+    button.textContent = button.dataset.label;
+    button.classList.remove("is-armed");
+  }
+  function armRosc(button) {
+    if (button.dataset.armed === "true") {
+      disarmRosc(button);
+      write(`${api}/actions`, { action: "rosc", details: {}, idempotency_key: crypto.randomUUID() });
+      return;
+    }
+    button.dataset.armed = "true";
+    button.textContent = "Tap again to confirm ROSC";
+    button.classList.add("is-armed");
+    roscArmTimer = window.setTimeout(() => disarmRosc(button), 5000);
+  }
+
   function makeFields(category) {
     const holder = document.querySelector("#event-fields");
     holder.replaceChildren();
-    if (category === "medication_admin") {
-      const medicationLabel = document.createElement("label");
-      medicationLabel.textContent = "Medication given";
-      const medicationSelect = document.createElement("select");
-      medicationSelect.name = "medication_choice";
-      medicationSelect.required = true;
-      medicationSelect.innerHTML = `
-        <option value="" disabled selected>Select medication…</option>
-        <optgroup label="Adult ACLS algorithm medications">
-          <option>Epinephrine</option>
-          <option>Amiodarone</option>
-          <option>Lidocaine</option>
-          <option>Atropine</option>
-          <option>Adenosine</option>
-          <option>Procainamide</option>
-          <option>Sotalol</option>
-        </optgroup>
-        <optgroup label="Indication-specific / reversible-cause documentation (not routine ACLS drugs)">
-          <option>Magnesium sulfate</option>
-          <option>Sodium bicarbonate</option>
-          <option>Calcium gluconate</option>
-          <option>Calcium chloride</option>
-          <option>Dextrose 5% (D5)</option>
-          <option>Dextrose 10% (D10)</option>
-          <option>Dextrose 25% (D25)</option>
-          <option>Dextrose 50% (D50)</option>
-          <option>Naloxone</option>
-        </optgroup>
-        <option value="__other__">Other medication…</option>`;
-      const customMedication = input("custom_medication", "Enter other medication", "text", false);
-      customMedication.hidden = true;
-      medicationLabel.append(medicationSelect);
-      holder.append(medicationLabel, customMedication);
-      medicationSelect.addEventListener("change", () => {
-        const isOther = medicationSelect.value === "__other__";
-        customMedication.hidden = !isOther;
-        customMedication.querySelector("input").required = isOther;
-        if (isOther) customMedication.querySelector("input").focus();
-      });
-      const notice = document.createElement("p");
-      notice.className = "muted medication-catalog-note";
-      notice.textContent = "Documentation choices only—not treatment recommendations. Enter the actual dose, units, and route given. No dose or route is preselected.";
-      holder.append(notice);
-      holder.append(input("dose", "Actual dose given", "number", true));
-      holder.append(input("units", "Dose units", "text", true, "e.g., mg"));
-      holder.append(input("route", "Route", "text", true, "Enter documented route"));
-      holder.append(input("note", "Optional note"));
-    } else if (category === "infusion") {
+    if (category === "infusion") {
       const infusionLabel = document.createElement("label");
       infusionLabel.textContent = "Infusion medication";
       const infusionSelect = document.createElement("select");
@@ -145,7 +426,7 @@
     } else if (category !== "medication_admin") {
       holder.append(input("note", "Free-text details", "text", true));
     }
-    holder.append(input("occurred_at", "Occurrence time (local; defaults to now)", "datetime-local"));
+    holder.append(timeField());
   }
 
   function renderEvents(events) {
@@ -153,7 +434,7 @@
     const previousScroll = list.scrollTop;
     const wasAtTop = previousScroll < 12;
     list.replaceChildren();
-    for (const event of events) {
+    for (const event of [...events].reverse()) {
       const item = document.createElement("li");
       item.className = "event-item";
       const heading = document.createElement("div");
@@ -164,6 +445,14 @@
       timestamp.dateTime = event.occurred_at;
       timestamp.textContent = formatTime(event.occurred_at);
       heading.append(title, timestamp);
+      if (canWrite() && state?.lifecycle === "active" && UNDOABLE_TYPES.has(event.type)) {
+        const undo = document.createElement("button");
+        undo.type = "button";
+        undo.className = "button button-quiet undo-button";
+        undo.textContent = "Undo";
+        undo.dataset.undoEventId = event.id;
+        heading.append(undo);
+      }
       const description = document.createElement("p");
       const payload = event.payload || {};
       description.textContent = Object.entries(payload).map(([key, value]) => `${label(key)}: ${typeof value === "object" ? JSON.stringify(value) : String(value)}`).join(" · ");
@@ -227,6 +516,9 @@
     const steps = guidance?.next_steps || [];
     const signature = JSON.stringify({
       steps: steps.map(({ due_at: _dueAt, overdue_at: _overdueAt, ...step }) => step),
+      lastShock: lastShockEnergy(),
+      lastRoute: lastRoute(),
+      writable: canWrite(),
       visible: steps.filter((step) => !step.due_at || (Date.parse(step.due_at) - nowEpochMs()) / 1000 <= 60).map((step) => step.id),
     });
     const container = document.querySelector("#next-step-list");
@@ -258,22 +550,7 @@
         countdown.setAttribute("aria-live", "off");
         countdown.dataset.countdown = "";
         content.append(title, detail, countdown);
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "button button-primary next-step-button";
-        button.dataset.nextStepAction = step.action;
-        button.dataset.stepId = step.id;
-        button.textContent = ({
-          start: state?.workflow === "cardiac_arrest" ? "Start code" : "Start session",
-          pulse_check: state?.compression_status === "held" ? "Document rhythm and pulse" : "Start pulse check",
-          administer_epinephrine: "Administer epinephrine",
-          administer_antiarrhythmic: "Administer antiarrhythmic",
-          record_shock: "Record shock",
-          resume: "Resume compressions",
-          rosc: "Record ROSC",
-        })[step.action] || "Start action";
-        button.disabled = !canWrite();
-        card.append(content, button);
+        card.append(content, buildStepActions(step));
         container.append(card);
       }
       if (!visibleSteps.length) {
@@ -301,9 +578,10 @@
       const dueAt = card.dataset.dueAt ? Date.parse(card.dataset.dueAt) : null;
       const overdueAt = card.dataset.overdueAt ? Date.parse(card.dataset.overdueAt) : null;
       const countdown = card.querySelector("[data-countdown]");
-      const button = card.querySelector(".next-step-button");
+      const buttons = [...card.querySelectorAll(".next-step-button")];
+      const primaries = buttons.filter((item) => item.classList.contains("button-primary"));
       card.classList.remove("is-due-soon", "is-due", "is-overdue");
-      button.classList.remove("button-danger");
+      primaries.forEach((item) => item.classList.remove("button-danger"));
       if (!dueAt) {
         countdown.textContent = card.dataset.noTimer === "true" ? "No timer" : "Ready when you are";
         return;
@@ -316,7 +594,7 @@
         const overdueSeconds = Math.floor((now - overdueAt) / 1000);
         countdown.textContent = `Overdue by: ${overdueSeconds} seconds`;
         card.classList.add("is-overdue");
-        button.classList.add("button-danger");
+        primaries.forEach((item) => item.classList.add("button-danger"));
       } else if (overdueAt) {
         const untilOverdue = Math.max(0, Math.ceil((overdueAt - now) / 1000));
         countdown.textContent = `Due now · overdue in: ${untilOverdue} seconds`;
@@ -325,11 +603,13 @@
         countdown.textContent = "Due now";
         card.classList.add("is-due");
       }
-      button.disabled = !canWrite();
+      buttons.forEach((item) => { item.disabled = !canWrite(); });
     });
     cards.sort((left, right) => compareStepUrgency(left, right, now));
     const container = document.querySelector("#next-step-list");
-    cards.forEach((card) => container.append(card));
+    // Re-inserting a node mid-click cancels the click, so only move cards when the order changed.
+    const reordered = cards.some((card, index) => container.children[index] !== card);
+    if (reordered) cards.forEach((card) => container.append(card));
   }
 
   function compareStepUrgency(left, right, now) {
@@ -426,16 +706,12 @@
       const saved = await write(`${api}/actions`, { action: "hold", details: {}, idempotency_key: crypto.randomUUID() });
       if (!saved) return;
     }
-    if (state?.compression_status === "held") {
-      rhythmForm.reset();
-      updatePulseChoice();
-      document.querySelector("#rhythm-save-error").hidden = true;
-      document.querySelector("#pulse-check-dialog").showModal();
-      document.querySelector("#rhythm-form select[name='rhythm']").focus();
-    }
+    if (state?.compression_status === "held") openRhythmDialog();
   }
 
   function updateState(snapshot, synchronized = false) {
+    // A poll that was in flight during a save can arrive with an older revision and visually undo it.
+    if (synchronized && state && snapshot.revision < state.revision) return;
     state = snapshot;
     if (synchronized) {
       serverEpochMs = Date.parse(snapshot.server_time);
@@ -469,8 +745,8 @@
         : label(state.compression_status);
     document.querySelector("#cycle-caption").textContent = isArrest ? "Compression cycle" : state.compression_status === "running" ? "CPR elapsed" : "Compression-cycle timer";
     const assessment = state.rhythm_assessment;
-    document.querySelector("#rhythm-state").textContent = assessment ? `${rhythmLabel(assessment.rhythm)} · pulse ${label(assessment.pulse)}` : "Not assessed";
-    document.querySelector("#rhythm-details").textContent = assessment ? "Assessment recorded" : "No assessment recorded";
+    document.querySelector("#rhythm-state").textContent = assessment ? `${rhythmLabel(assessment.rhythm)} · pulse ${label(assessment.pulse)}` : isArrest ? "Unknown" : "Not assessed";
+    document.querySelector("#rhythm-details").textContent = assessment ? "Assessment recorded" : isArrest ? "Initial rhythm unknown · first check at 2 minutes" : "No assessment recorded";
     document.querySelectorAll(".category-tile").forEach((button) => { button.disabled = !active || !canWrite(); });
     const writer = canWrite();
     document.querySelectorAll("#ready-actions button, #active-actions button").forEach((button) => { button.disabled = !writer || busy; });
@@ -545,12 +821,10 @@
       const action = button.dataset.action;
       if (action === "end") {
         document.querySelector("#end-confirm").hidden = false;
-        document.querySelector("#end-reason").focus();
         return;
       }
       if (action === "rosc") {
-        document.querySelector("#rosc-confirm").hidden = false;
-        document.querySelector("#confirm-rosc").focus();
+        armRosc(button);
         return;
       }
       button.dataset.idempotencyKey ||= crypto.randomUUID();
@@ -563,6 +837,21 @@
     const opener = event.target.closest("[data-open-guidance]");
     if (opener) document.getElementById(opener.dataset.openGuidance)?.showModal();
     if (event.target.matches("[data-close-guidance]")) event.target.closest("dialog")?.close();
+    const rhythmChoice = event.target.closest("[data-rhythm]");
+    if (rhythmChoice) {
+      recordRhythm(rhythmChoice.dataset.rhythm, rhythmChoice.dataset.pulse);
+      return;
+    }
+    const quick = event.target.closest("[data-quick]");
+    if (quick) {
+      quickRecord(quick.dataset);
+      return;
+    }
+    const undo = event.target.closest("[data-undo-event-id]");
+    if (undo) {
+      write(`${api}/events/${encodeURIComponent(undo.dataset.undoEventId)}/undo`, {});
+      return;
+    }
     const nextStep = event.target.closest("[data-next-step-action]");
     if (nextStep) {
       const action = nextStep.dataset.nextStepAction;
@@ -571,8 +860,7 @@
       else if (action === "administer_antiarrhythmic") openAntiarrhythmicDialog();
       else if (action === "record_shock") openShockDialog();
       else if (action === "rosc") {
-        document.querySelector(".secondary-controls").open = true;
-        document.querySelector("#rosc-confirm").hidden = false;
+        write(`${api}/actions`, { action: "rosc", details: {}, idempotency_key: crypto.randomUUID() });
       }
       else if (["start", "resume"].includes(action)) {
         write(`${api}/actions`, { action, details: {}, idempotency_key: crypto.randomUUID() });
@@ -591,61 +879,26 @@
     });
   });
 
-  document.querySelector("#end-confirm").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    form.dataset.idempotencyKey ||= crypto.randomUUID();
-    const saved = await write(`${api}/actions`, {
-      action: "end",
-      details: { outcome: form.elements.outcome.value.trim() },
-      idempotency_key: form.dataset.idempotencyKey,
-    });
-    if (saved) { delete form.dataset.idempotencyKey; form.hidden = true; }
-    else { const error = form.querySelector(".form-error"); error.textContent = status.textContent; error.hidden = false; }
-  });
-
-  document.querySelector("#confirm-rosc").addEventListener("click", async () => {
-    const button = document.querySelector("#confirm-rosc");
-    button.dataset.idempotencyKey ||= crypto.randomUUID();
-    const saved = await write(`${api}/actions`, { action: "rosc", details: {}, idempotency_key: button.dataset.idempotencyKey });
-    if (saved) { delete button.dataset.idempotencyKey; document.querySelector("#rosc-confirm").hidden = true; }
-  });
-
-  const rhythmForm = document.querySelector("#rhythm-form");
-  const rhythmSelect = rhythmForm.elements.rhythm;
-  const pulseField = document.querySelector("#pulse-choice-field");
-  const pulseSelect = rhythmForm.elements.pulse;
-  const impliedPulse = { vf: "absent", pea: "absent", asystole: "absent", rosc: "present" };
-  const updatePulseChoice = () => {
-    const pulseIsRequired = rhythmSelect.value === "vt";
-    pulseField.hidden = !pulseIsRequired;
-    pulseSelect.required = pulseIsRequired;
-    if (!pulseIsRequired) pulseSelect.value = "";
-  };
-  rhythmSelect.addEventListener("change", updatePulseChoice);
-
-  rhythmForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const error = document.querySelector("#rhythm-save-error");
+  async function endSession(outcome) {
+    const form = document.querySelector("#end-confirm");
+    const error = form.querySelector(".form-error");
     error.hidden = true;
-    form.dataset.idempotencyKey ||= crypto.randomUUID();
-    const rhythm = rhythmSelect.value;
-    const details = { rhythm, pulse: rhythm === "vt" ? pulseSelect.value : impliedPulse[rhythm] };
-    const saved = await write(`${api}/actions`, {
-      action: "rhythm_assessment",
-      details,
-      idempotency_key: form.dataset.idempotencyKey,
-    });
-    if (saved) {
-      delete form.dataset.idempotencyKey;
-      form.reset();
-      updatePulseChoice();
-      document.querySelector("#pulse-check-dialog").close();
-    } else {
-      error.textContent = status.textContent;
-      error.hidden = false;
-    }
+    if (!outcome) { error.textContent = "Choose or type an end reason."; error.hidden = false; return; }
+    const saved = await write(`${api}/actions`, { action: "end", details: { outcome }, idempotency_key: crypto.randomUUID() });
+    if (saved) form.hidden = true;
+    else { error.textContent = status.textContent; error.hidden = false; }
+  }
+  for (const reason of catalog.endReasons) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "button button-secondary";
+    chip.textContent = reason;
+    chip.addEventListener("click", () => endSession(reason));
+    document.querySelector("#end-reason-chips").append(chip);
+  }
+  document.querySelector("#end-confirm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    endSession(event.currentTarget.elements.outcome.value.trim());
   });
 
   document.querySelector("#epinephrine-form").addEventListener("submit", async (event) => {
@@ -736,7 +989,12 @@
       const form = document.querySelector("#event-form");
       form.dataset.category = button.dataset.category;
       document.querySelector("#event-form-title").textContent = `Record ${label(button.dataset.category)}`;
-      makeFields(button.dataset.category);
+      if (CHIP_CATEGORIES.includes(button.dataset.category)) {
+        renderChipForm(button.dataset.category);
+      } else {
+        doc = { mode: "legacy", category: button.dataset.category, time: 0, customTime: "", fields: {} };
+        makeFields(button.dataset.category);
+      }
       form.hidden = false;
       form.querySelector("input")?.focus();
     });
@@ -746,52 +1004,55 @@
     const form = document.querySelector("#event-form");
     form.reset();
     form.hidden = true;
+    doc = null;
   });
 
   document.querySelector("#event-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
-    const fields = Object.fromEntries(new FormData(form).entries());
-    const occurredAt = fields.occurred_at ? new Date(fields.occurred_at).toISOString() : new Date(nowEpochMs()).toISOString();
-    let title = fields.title;
-    if (form.dataset.category === "medication_admin") {
-      title = fields.medication_choice === "__other__" ? fields.custom_medication : fields.medication_choice;
-    } else if (form.dataset.category === "infusion") {
-      title = fields.infusion_choice === "__other__" ? fields.custom_infusion_medication : fields.infusion_choice;
-    }
-    const { title: _title, medication_choice: _choice, custom_medication: _custom, infusion_choice: _infusionChoice, custom_infusion_medication: _customInfusion, occurred_at: _, ...payload } = fields;
-    payload.title = title.trim();
-    payload.occurred_at = occurredAt;
-    for (const [key, value] of Object.entries(payload)) if (value === "") delete payload[key];
     const error = form.querySelector(".form-error");
     error.hidden = true;
-    form.dataset.idempotencyKey ||= crypto.randomUUID();
+    if (!doc) return;
+    const occurred = occurredAt();
+    if (!occurred) { error.textContent = "Enter the custom time."; error.hidden = false; return; }
+    let payload;
+    if (doc.mode === "chips") {
+      if (!docComplete()) { error.textContent = "Complete the choices above first."; error.hidden = false; return; }
+      payload = { ...doc.fields, occurred_at: occurred };
+    } else {
+      const fields = Object.fromEntries(new FormData(form).entries());
+      let title = fields.title;
+      if (form.dataset.category === "infusion") title = fields.infusion_choice === "__other__" ? fields.custom_infusion_medication : fields.infusion_choice;
+      const { title: _title, infusion_choice: _infusionChoice, custom_infusion_medication: _customInfusion, custom_time: _customTime, ...rest } = fields;
+      payload = { ...rest, title: (title || "").trim(), occurred_at: occurred };
+      for (const [key, value] of Object.entries(payload)) if (value === "") delete payload[key];
+    }
     const saved = await write(`${api}/events`, {
       event_type: form.dataset.category,
       payload,
-      idempotency_key: form.dataset.idempotencyKey,
+      idempotency_key: crypto.randomUUID(),
     });
-    if (saved) { delete form.dataset.idempotencyKey; form.reset(); form.hidden = true; }
+    if (saved) { form.reset(); form.hidden = true; doc = null; }
     else { error.textContent = status.textContent; error.hidden = false; }
   });
 
   document.querySelector("#takeover-button")?.addEventListener("click", () => {
-    const form = document.querySelector("#takeover-form");
-    form.hidden = false;
-    document.querySelector("#takeover-reason").focus();
+    document.querySelector("#takeover-form").hidden = false;
   });
 
-  document.querySelector("#takeover-form")?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
+  async function takeOver(reason) {
+    const form = document.querySelector("#takeover-form");
+    const fieldError = form.querySelector(".form-error");
+    fieldError.hidden = true;
     if (busy || !state) return;
+    if (reason.length < 4) { fieldError.textContent = "Choose or type a reason."; fieldError.hidden = false; return; }
     busy = true;
     status.textContent = "Taking over recorder lease…";
     try {
       const response = await fetch(`${api}/takeover`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
-        body: JSON.stringify({ reason: form.elements.reason.value.trim(), expected_revision: state.revision }),
+        body: JSON.stringify({ reason, expected_revision: state.revision }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || `Takeover failed (${response.status}).`);
@@ -802,14 +1063,28 @@
       await synchronize();
     } catch (error) {
       status.textContent = `Takeover failed — ${error.message}`;
-      const fieldError = form.querySelector(".form-error");
       fieldError.textContent = status.textContent;
       fieldError.hidden = false;
     } finally {
       busy = false;
       if (state) updateState(state);
     }
-  });
+  }
+  const takeoverChips = document.querySelector("#takeover-reason-chips");
+  if (takeoverChips) {
+    for (const reason of catalog.takeoverReasons) {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "button button-secondary";
+      chip.textContent = reason;
+      chip.addEventListener("click", () => takeOver(reason));
+      takeoverChips.append(chip);
+    }
+    document.querySelector("#takeover-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      takeOver(event.currentTarget.elements.reason.value.trim());
+    });
+  }
 
   function tick() {
     if (!state) return;

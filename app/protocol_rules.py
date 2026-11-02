@@ -4,6 +4,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 ADULT_ARREST_RULESET_VERSION = "2025-AHA-adult-arrest-v1"
+# "unknown" is an unwitnessed initial rhythm; it is managed as nonshockable.
+PULSELESS_RHYTHMS = {"vf", "vt", "pea", "asystole", "unknown"}
 ADULT_ARREST_SOURCE = {
     "title": "2025 AHA Adult Cardiac Arrest Algorithm",
     "url": "https://cpr.heart.org/-/media/CPR-Files/CPR-Guidelines-Files/2025-Algorithms/Algorithm-ACLS-CA-250527.pdf?sc_lang=en",
@@ -308,7 +310,7 @@ def _epinephrine_step(events: list[dict[str, Any]], now: datetime) -> dict[str, 
                 _event_time(event) for event in events
                 if event.get("type") == "rhythm_assessment"
                 and (event.get("payload") or {}).get("pulse") == "absent"
-                and (event.get("payload") or {}).get("rhythm") in {"vf", "vt", "pea", "asystole"}
+                and (event.get("payload") or {}).get("rhythm") in PULSELESS_RHYTHMS
                 and _event_time(event) is not None
             ),
             default=None,
@@ -425,7 +427,7 @@ def adult_cardiac_arrest_guidance(
                 due_at=_utc(hold_anchor_at) or now,
                 kind="assessment",
             ))
-            if assessment_payload.get("pulse") == "absent" and assessment_payload.get("rhythm") in {"vf", "vt", "pea", "asystole"}:
+            if assessment_payload.get("pulse") == "absent" and assessment_payload.get("rhythm") in PULSELESS_RHYTHMS:
                 result["recommendations"].extend(_medication_guidance(events, now, antiarrhythmic=False))
                 epi_step = _epinephrine_step(events, now)
                 if epi_step:
@@ -449,37 +451,38 @@ def adult_cardiac_arrest_guidance(
             late_at=cycle_anchor + timedelta(minutes=2),
             kind="assessment",
         ))
-        if assessment_payload.get("pulse") == "absent" and assessment_payload.get("rhythm") in {"vf", "vt", "pea", "asystole"}:
+        if assessment_payload.get("pulse") == "absent" and assessment_payload.get("rhythm") in PULSELESS_RHYTHMS:
             result["recommendations"].extend(_medication_guidance(events, now, antiarrhythmic=False))
             epi_step = _epinephrine_step(events, now)
             if epi_step:
                 result["next_steps"].append(epi_step)
         return result
     elif assessment_time is None:
-        result["status"] = "assessment_required"
-        result["summary"] = "Document the initial rhythm and pulse assessment."
-        result["needs_rhythm_assessment"] = True
+        # Arrest begins pulseless by definition; only the rhythm is recorded, and the first pulse check is at 2 minutes.
+        result["summary"] = "Patient is pulseless. Continue high-quality CPR and record the initial rhythm (Unknown if not witnessed)."
         result["recommendations"].append({
-            "id": "adult-arrest-rhythm-pulse-assessment",
-            "kind": "assessment",
-            "title": "Document initial rhythm and pulse",
-            "text": "Record the observed rhythm and pulse separately; the app will not infer either finding.",
+            "id": "adult-arrest-continue-cpr",
+            "kind": "cpr",
+            "title": "Continue CPR",
+            "text": "The arrest pathway starts with a pulseless patient. Record the initial rhythm if known, otherwise select Unknown; the first pulse check is due after 2 minutes of CPR.",
+            "help": HELP_LINKS["high_quality_cpr"],
         })
-        result["next_steps"].append(_scheduled_step(
-            step_id="adult-arrest-pulse-check",
-            title="Record initial rhythm and pulse",
-            text="Document what was observed; do not infer rhythm or pulse.",
-            action="pulse_check",
-            due_at=_utc(started_at) or now,
-            kind="assessment",
-        ))
+        result["next_steps"].append({
+            "id": "adult-arrest-initial-rhythm",
+            "title": "Record initial rhythm",
+            "text": "Select the initial rhythm. Choose Unknown if it was not witnessed or is not yet known.",
+            "action": "record_initial_rhythm",
+            "kind": "assessment",
+            "due_at": None,
+            "overdue_at": None,
+        })
         return result
 
     pulse = assessment_payload.get("pulse")
     rhythm = assessment_payload.get("rhythm")
     if rhythm in {"vf", "vt"} and pulse == "absent":
         branch = "shockable"
-    elif rhythm in {"pea", "asystole"}:
+    elif rhythm in {"pea", "asystole", "unknown"}:
         branch = "nonshockable"
     elif rhythm == "vt" and pulse not in {"present", "absent"}:
         result["status"] = "assessment_required"
@@ -572,6 +575,8 @@ def adult_cardiac_arrest_guidance(
     else:
         is_held = compression_status == "held"
         result["summary"] = (
+            "Initial rhythm is unknown: manage as nonshockable, continue CPR, and follow the epinephrine interval guidance."
+            if rhythm == "unknown" else
             "Asystole or pulseless electrical activity is documented: resume compressions when actually resumed and follow epinephrine interval guidance."
             if is_held else
             "Asystole or pulseless electrical activity is documented: continue CPR and follow the epinephrine interval guidance."

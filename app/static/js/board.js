@@ -60,7 +60,7 @@
     document.querySelector("#board-workflow").textContent = pretty(state.workflow);
     document.querySelector("#board-lifecycle").textContent = `${pretty(state.lifecycle)}${state.outcome ? ` · ${pretty(state.outcome)}` : ""}`;
     const assessment = state.rhythm_assessment;
-    document.querySelector("#board-rhythm").textContent = assessment ? rhythmLabel(assessment.rhythm) : "Not assessed";
+    document.querySelector("#board-rhythm").textContent = assessment ? rhythmLabel(assessment.rhythm) : "Unknown";
     document.querySelector("#board-pulse").textContent = assessment ? `Pulse ${pretty(assessment.pulse)}${assessment.heart_rate_bpm ? ` · ${assessment.heart_rate_bpm} bpm` : ""}` : "Pulse unknown";
     document.querySelector("#board-compression").textContent = pretty(state.compression_status);
     document.querySelector("#board-next").textContent = state.recommendations?.summary || "No recommendation available";

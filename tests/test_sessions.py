@@ -178,13 +178,10 @@ def test_read_only_board_and_recorder_workspace_render(client):
     assert b"high-quality-cpr-dialog" in workspace.data
     assert b"shock-recommendations-dialog" in workspace.data
     assert b"Next steps" in workspace.data
-    assert b"Ventricular Fibrillation (VF)" in workspace.data
-    assert b"Ventricular Tachycardia (VT)" in workspace.data
-    assert b"Pulseless Electrical Activity (PEA)" in workspace.data
-    assert b">Asystole</option>" in workspace.data
-    assert b"Return of Spontaneous Circulation (ROSC)" in workspace.data
-    assert b'id="pulse-choice-field" hidden' in workspace.data
+    assert b'id="rhythm-buttons"' in workspace.data
     script = client.get("/static/js/session.js").get_data(as_text=True)
+    for choice in ("Shockable", "Non-shockable", '"VF"', '"VT — pulseless"', '"VT — with pulse"', '"PEA"', '"Asystole"', '"Unknown"', '"ROSC"'):
+        assert choice in script
     assert 'vf: "VF", vt: "VT"' in script
     assert b'value="1" required' in workspace.data
     assert b'value="IV">IV</option><option value="IO">IO</option>' in workspace.data
@@ -193,24 +190,21 @@ def test_read_only_board_and_recorder_workspace_render(client):
     assert b"READ ONLY" in board.data
 
 
-def test_medication_entry_script_has_catalog_and_no_suggested_doses(client):
+def test_medication_entry_catalog_separates_bolus_and_infusion_choices(client):
     login(client, "test-recorder", "test-recorder-password-123")
-    response = client.get("/static/js/session.js")
-    assert response.status_code == 200
-    script = response.get_data(as_text=True)
+    catalog = client.get("/static/js/catalog.js").get_data(as_text=True)
+    script = client.get("/static/js/session.js").get_data(as_text=True)
     for medication in (
-        "Epinephrine", "Amiodarone", "Lidocaine", "Atropine", "Adenosine",
-        "Dopamine infusion", "Epinephrine infusion", "Procainamide", "Sotalol",
+        "Epinephrine", "Amiodarone", "Lidocaine", "Atropine", "Adenosine", "Procainamide", "Sotalol",
         "Magnesium sulfate", "Sodium bicarbonate", "Calcium gluconate",
         "Calcium chloride", "Dextrose 5% (D5)", "Dextrose 10% (D10)",
         "Dextrose 25% (D25)", "Dextrose 50% (D50)", "Naloxone",
     ):
-        assert medication in script
-    assert "not routine ACLS drugs" in script
-    assert "No dose or route is preselected." in script
-    bolus_choices = script.split('<optgroup label="Adult ACLS algorithm medications">', 1)[1].split("</optgroup>", 1)[0]
-    assert "Dopamine infusion" not in bolus_choices
-    assert "Epinephrine infusion" not in bolus_choices
+        assert medication in catalog
+    assert "not routine ACLS drugs" in catalog
+    assert "Dopamine infusion" not in catalog
+    assert "Epinephrine infusion" not in catalog
+    assert "Dopamine infusion" in script and "Epinephrine infusion" in script
     assert 'infusionSelect.name = "infusion_choice"' in script
 
 
@@ -273,9 +267,9 @@ def test_adult_arrest_guidance_updates_from_documented_rhythm_without_creating_e
     session_id, lease = created.json["session_id"], created.json["lease_token"]
     started = action(client, session_id, lease, 1, "start")
     initial = client.get(f"/api/sessions/{session_id}/state").json
-    assert initial["recommendations"]["status"] == "assessment_required"
-    assert initial["recommendations"]["needs_rhythm_assessment"] is True
-    assert initial["recommendations"]["next_steps"][0]["action"] == "pulse_check"
+    assert initial["recommendations"]["status"] == "active"
+    assert initial["recommendations"]["needs_rhythm_assessment"] is False
+    assert initial["recommendations"]["next_steps"][0]["action"] == "record_initial_rhythm"
     assert len(initial["events"]) == len(started.json["events"])
 
     assessed = action(
@@ -323,3 +317,57 @@ def test_epinephrine_documentation_resets_three_to_five_minute_next_step(client)
     repeat = next(item for item in response.json["recommendations"]["next_steps"] if item["id"] == "adult-arrest-epinephrine")
     expected = datetime.fromisoformat(administered_at.replace("Z", "+00:00")) + timedelta(minutes=3)
     assert repeat["due_at"] == expected.isoformat().replace("+00:00", "Z")
+
+
+def test_unknown_initial_rhythm_is_accepted_with_implied_absent_pulse(client):
+    login(client, "test-recorder", "test-recorder-password-123")
+    created = create_session(client)
+    session_id, lease = created.json["session_id"], created.json["lease_token"]
+    started = action(client, session_id, lease, 1, "start")
+    recorded = action(
+        client, session_id, lease, started.json["revision"], "rhythm_assessment",
+        details={"rhythm": "unknown", "pulse": "absent"},
+    )
+    assert recorded.status_code == 200
+    assert recorded.json["rhythm_assessment"] == {"rhythm": "unknown", "pulse": "absent"}
+    assert recorded.json["recommendations"]["status"] == "active"
+
+
+def test_undo_marks_event_ineffective_audits_it_and_refreshes_guidance(client):
+    login(client, "test-recorder", "test-recorder-password-123")
+    created = create_session(client)
+    session_id, lease = created.json["session_id"], created.json["lease_token"]
+    started = action(client, session_id, lease, 1, "start")
+    assessed = action(
+        client, session_id, lease, started.json["revision"], "rhythm_assessment",
+        details={"rhythm": "pea", "pulse": "absent"},
+    )
+    event_id = assessed.json["events"][-1]["id"]
+    undone = client.post(
+        f"/api/sessions/{session_id}/events/{event_id}/undo",
+        headers={"X-Recorder-Lease": lease},
+        json={"expected_revision": assessed.json["revision"]},
+    )
+    assert undone.status_code == 200
+    assert event_id not in [item["id"] for item in undone.json["events"]]
+    assert undone.json["rhythm_assessment"] is None
+    again = client.post(
+        f"/api/sessions/{session_id}/events/{event_id}/undo",
+        headers={"X-Recorder-Lease": lease},
+        json={"expected_revision": undone.json["revision"]},
+    )
+    assert again.status_code == 404
+
+
+def test_lifecycle_events_cannot_be_undone(client):
+    login(client, "test-recorder", "test-recorder-password-123")
+    created = create_session(client)
+    session_id, lease = created.json["session_id"], created.json["lease_token"]
+    started = action(client, session_id, lease, 1, "start")
+    start_event = next(item for item in started.json["events"] if item["type"] == "session_started")
+    response = client.post(
+        f"/api/sessions/{session_id}/events/{start_event['id']}/undo",
+        headers={"X-Recorder-Lease": lease},
+        json={"expected_revision": started.json["revision"]},
+    )
+    assert response.status_code == 409
