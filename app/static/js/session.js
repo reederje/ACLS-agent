@@ -132,11 +132,12 @@
   function renderChipForm(category) {
     const holder = document.querySelector("#event-fields");
     holder.replaceChildren();
+    holder.className = "event-fields chip-form";
     doc = { mode: "chips", category, time: 0, customTime: "", fields: {} };
-    holder.append(timeField());
     if (category === "medication_admin") renderMedicationChips(holder);
     else if (category === "electrical_therapy") renderElectricalChips(holder);
     else renderPresetChips(holder, category);
+    holder.append(timeField());
   }
 
   function renderMedicationChips(holder) {
@@ -371,9 +372,16 @@
     roscArmTimer = window.setTimeout(() => disarmRosc(button), 5000);
   }
 
+  // The option form temporarily replaces the category buttons.
+  function setDocumentationOpen(open) {
+    document.querySelector(".intervention-panel .tile-grid").hidden = open;
+    document.querySelector("#event-form").hidden = !open;
+  }
+
   function makeFields(category) {
     const holder = document.querySelector("#event-fields");
     holder.replaceChildren();
+    holder.className = "event-fields";
     if (category === "infusion") {
       const infusionLabel = document.createElement("label");
       infusionLabel.textContent = "Infusion medication";
@@ -743,11 +751,13 @@
       : checkDue
         ? `Pulse check due · overdue ${formatDuration(compressionElapsed - 120)}`
         : label(state.compression_status);
+    document.querySelector("#compression-state").classList.toggle("pulse-overdue", Boolean(checkDue));
     document.querySelector("#cycle-caption").textContent = isArrest ? "Compression cycle" : state.compression_status === "running" ? "CPR elapsed" : "Compression-cycle timer";
     const assessment = state.rhythm_assessment;
     document.querySelector("#rhythm-state").textContent = assessment ? `${rhythmLabel(assessment.rhythm)} · pulse ${label(assessment.pulse)}` : isArrest ? "Unknown" : "Not assessed";
     document.querySelector("#rhythm-details").textContent = assessment ? "Assessment recorded" : isArrest ? "Initial rhythm unknown · first check at 2 minutes" : "No assessment recorded";
     document.querySelectorAll(".category-tile").forEach((button) => { button.disabled = !active || !canWrite(); });
+    if (!active) { setDocumentationOpen(false); doc = null; }
     const writer = canWrite();
     document.querySelectorAll("#ready-actions button, #active-actions button").forEach((button) => { button.disabled = !writer || busy; });
     const takeover = document.querySelector("#takeover-button");
@@ -995,7 +1005,7 @@
         doc = { mode: "legacy", category: button.dataset.category, time: 0, customTime: "", fields: {} };
         makeFields(button.dataset.category);
       }
-      form.hidden = false;
+      setDocumentationOpen(true);
       form.querySelector("input")?.focus();
     });
   });
@@ -1003,7 +1013,7 @@
   document.querySelector("#cancel-event").addEventListener("click", () => {
     const form = document.querySelector("#event-form");
     form.reset();
-    form.hidden = true;
+    setDocumentationOpen(false);
     doc = null;
   });
 
@@ -1032,7 +1042,7 @@
       payload,
       idempotency_key: crypto.randomUUID(),
     });
-    if (saved) { form.reset(); form.hidden = true; doc = null; }
+    if (saved) { form.reset(); setDocumentationOpen(false); doc = null; }
     else { error.textContent = status.textContent; error.hidden = false; }
   });
 
@@ -1093,11 +1103,14 @@
     if (state.compression_status === "running" && state.compression_anchor_at) {
       const cycleElapsed = elapsedFrom(state.compression_anchor_at);
       document.querySelector("#cycle-timer").textContent = state.workflow === "cardiac_arrest" ? formatDuration(Math.max(0, 120 - cycleElapsed)) : formatDuration(cycleElapsed);
-      document.querySelector("#compression-state").textContent = state.workflow === "cardiac_arrest" && cycleElapsed >= 120 ? `Pulse check due · overdue ${formatDuration(cycleElapsed - 120)}` : label(state.compression_status);
+      const pulseOverdue = state.workflow === "cardiac_arrest" && cycleElapsed >= 120;
+      document.querySelector("#compression-state").textContent = pulseOverdue ? `Pulse check due · overdue ${formatDuration(cycleElapsed - 120)}` : label(state.compression_status);
+      document.querySelector("#compression-state").classList.toggle("pulse-overdue", pulseOverdue);
     } else if (state.compression_status === "held" && state.hold_anchor_at) {
       const pauseDuration = elapsedFrom(state.hold_anchor_at);
       document.querySelector("#cycle-timer").textContent = formatDuration(pauseDuration);
       document.querySelector("#compression-state").textContent = `Compressions held · pause ${formatDuration(pauseDuration)}`;
+      document.querySelector("#compression-state").classList.remove("pulse-overdue");
     } else {
       document.querySelector("#cycle-timer").textContent = "—";
     }

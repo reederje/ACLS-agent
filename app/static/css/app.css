@@ -55,7 +55,7 @@ select, textarea { min-height: 44px; border: 1px solid #83939d; border-radius: 6
 .patient-session-meta { display: flex; flex-direction: column; gap: .15rem; border-top: 1px solid #e2e8eb; padding-top: .45rem; color: #52616a; font-size: .75rem; }
 .patient-session-meta strong { color: #173b4a; }
 .timer-panel { display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: .8rem; align-items: stretch; }
-.timer-primary, .timer-secondary { min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.timer-primary, .timer-secondary { min-width: 0; display: flex; flex-direction: column; justify-content: flex-start; }
 .timer-primary strong { font-variant-numeric: tabular-nums; font-size: clamp(2rem, 3.7vw, 3.1rem); line-height: 1.05; color: #073b4c; }
 .timer-secondary strong { font-variant-numeric: tabular-nums; font-size: clamp(1.35rem, 2.4vw, 1.85rem); line-height: 1.15; }
 .timer-primary > span:last-child, .timer-secondary > span:last-child { color: #52616a; }
@@ -212,3 +212,19 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .workflow-button.is-suggested { outline: 3px solid #b37909; outline-offset: 2px; }
 .workflow-button.is-suggested::after { content: " ★"; }
 .patient-session-controls > .chip-row { grid-column: 1 / -1; }
+.workspace-grid { grid-template-columns: minmax(0, 3fr) minmax(260px, 1fr) minmax(230px, .9fr); }
+.log-pane { position: sticky; top: 45px; max-height: calc(100vh - 70px); display: flex; flex-direction: column; padding: .9rem; font-size: .82rem; }
+.log-pane .section-heading h2 { font-size: 1.05rem; }
+.log-pane .event-list { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; margin-top: .6rem; }
+.log-pane .event-item { padding: .5rem .2rem; }
+.log-pane .event-heading { flex-wrap: wrap; gap: .3rem .6rem; }
+.log-pane .event-heading time, .log-pane .event-item small { font-size: .72rem; }
+@media (max-width: 1200px) { .workspace-grid { grid-template-columns: minmax(0, 1fr) 280px; } .log-pane { grid-column: 1 / -1; position: static; max-height: 50vh; } }
+@media (max-width: 760px) { .workspace-grid { grid-template-columns: 1fr; } }
+.tile-grid[hidden] { display: none; }
+.event-fields.chip-form { display: flex; flex-direction: column; align-items: stretch; gap: .75rem; }
+.chip-form .chip-field, .chip-form .chip-detail > .chip-field { margin-top: 0; padding: .6rem .75rem; border: 1px solid #d8e3e7; border-radius: 8px; background: white; }
+.chip-form .chip-detail { display: flex; flex-direction: column; gap: .75rem; }
+.chip-form .chip-label { color: #073b4c; font-size: .82rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding-bottom: .15rem; border-bottom: 2px solid #17657c; justify-self: start; }
+.chip-form .chip-detail > label { max-width: 360px; padding: .6rem .75rem; border: 1px solid #d8e3e7; border-radius: 8px; background: white; font-weight: 700; }
+.timer-secondary > #compression-state.pulse-overdue { align-self: flex-start; margin-top: .3rem; padding: .35rem .7rem; border-radius: 6px; background: #c62828; color: white; font-weight: 800; }
