@@ -10,6 +10,7 @@ from flask import Blueprint, abort, current_app, jsonify, render_template, reque
 from sqlalchemy.exc import IntegrityError
 
 from .ai_summary import create_pending_result, get_status, start_generation
+from .ai_resuscitation_summary import get_status as get_resuscitation_summary_status, request_update as request_resuscitation_update
 from .auth import current_user, login_required, role_required
 from .extensions import db
 from .models import AuditEntry, CodeSession, Event, utc_now
@@ -211,6 +212,23 @@ def ai_summary(session_id: str):
     return jsonify(get_status(session_id))
 
 
+@sessions.get("/api/sessions/<session_id>/ai-resuscitation-summary")
+@login_required
+def ai_resuscitation_summary_status(session_id: str):
+    _session_or_404(session_id)
+    return jsonify(get_resuscitation_summary_status(session_id))
+
+
+@sessions.post("/api/sessions/<session_id>/ai-resuscitation-summary")
+@login_required
+@role_required("recorder")
+def request_ai_resuscitation_summary(session_id: str):
+    record = _session_or_404(session_id)
+    _check_lease(record)
+    payload = request.get_json(silent=True) or {}
+    return jsonify(request_resuscitation_update(record, final=payload.get("final") is True))
+
+
 @sessions.post("/api/sessions/<session_id>/actions")
 @login_required
 @role_required("recorder")
@@ -333,6 +351,8 @@ def session_action(session_id: str):
     except IntegrityError:
         db.session.rollback()
         return _error("The update conflicted with another write. Refresh the session and retry.", 409)
+    if action in {"rosc", "end"} and record.workflow == "cardiac_arrest":
+        request_resuscitation_update(record, final=True)
     return jsonify(_state(record))
 
 

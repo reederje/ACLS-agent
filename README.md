@@ -4,7 +4,7 @@ This repository implements the clinical prototype described in `resuscitation_ap
 
 ## Current milestone
 
-The current local prototype includes a Flask application factory, SQLAlchemy persistence, hashed recorder/viewer accounts, CSRF protection, basic login throttling, ten validated synthetic patient fixtures, calendar-month context projection, session creation, explicit lifecycle/workflow actions, idempotent event writes, single-recorder lease/takeover, derived timers, a desktop recording workspace, a read-only status board, and deterministic adult-arrest recommendations based on recorded rhythm/pulse and interventions. Recommendations do not record events or calculate medication doses/routes. AI summaries and other clinical pathways are not enabled.
+The current local prototype includes a Flask application factory, SQLAlchemy persistence, hashed recorder/viewer accounts, CSRF protection, basic login throttling, ten validated synthetic patient fixtures, calendar-month context projection, session creation, explicit lifecycle/workflow actions, idempotent event writes, single-recorder lease/takeover, derived timers, a desktop recording workspace, a read-only status board, and deterministic adult-arrest recommendations based on recorded rhythm/pulse and interventions. Recommendations do not record events or calculate medication doses/routes. AI patient summaries and two-minute cardiac-arrest status updates are advisory and available when an AI provider is configured; other clinical pathways remain disabled.
 
 For timer transitions and event-flow behavior, run `python -m pytest`. `flask --app wsgi.py validate-fixtures` verifies the ten-case fixture matrix.
 
@@ -64,7 +64,7 @@ flask --app wsgi.py run --host 127.0.0.1 --port 5000
 
 Open <http://127.0.0.1:5000/> in a browser and sign in with the account you created. The recorder can select a synthetic case, choose a workflow, and create a session. A viewer account is read-only. Stop the development server with `Ctrl+C`.
 
-The development server is not for production. The adult-arrest guidance is advisory and synthetic-only, and is not validated for live clinical use. AI summaries and other clinical pathways are not enabled.
+The development server is not for production. Adult-arrest guidance and AI-generated patient/resuscitation summaries are advisory, synthetic-only, and not validated for live clinical use. Other clinical pathways are not enabled.
 
 ### Run tests
 

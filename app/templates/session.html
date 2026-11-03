@@ -250,6 +250,13 @@
     </aside>
   <aside class="log-pane card" aria-label="Event log">
     <div class="section-heading"><div><p class="eyebrow">Event stream · newest first</p><h2>Live event log</h2></div><span id="event-count" class="badge">0 events</span></div>
+    <section id="ai-resuscitation-summary" class="ai-resuscitation-summary" aria-labelledby="ai-resuscitation-title" aria-live="polite">
+      <div class="section-heading"><div><p class="eyebrow">AI-generated · synthetic simulation</p><h3 id="ai-resuscitation-title">Resuscitation status update</h3></div><span id="ai-resuscitation-time" class="muted"></span></div>
+      <p id="ai-resuscitation-pending" class="muted">A status update will be generated after the first two minutes of cardiac arrest.</p>
+      <p id="ai-resuscitation-unavailable" class="notice notice-warning" hidden>No AI status update is available for this interval.</p>
+      <ul id="ai-resuscitation-facts" class="ai-resuscitation-facts" hidden></ul>
+      <small id="ai-resuscitation-source" class="muted" hidden></small>
+    </section>
     <ol class="event-list" id="event-list" aria-live="polite"></ol>
   </aside>
   </div>

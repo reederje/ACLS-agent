@@ -202,7 +202,7 @@ def start_generation(result_id: int) -> None:
 
 
 def get_status(session_id: str) -> dict:
-    result = AIResult.query.filter_by(session_id=session_id).order_by(AIResult.id.desc()).first()
+    result = AIResult.query.filter_by(session_id=session_id, prompt_version=PROMPT_VERSION).order_by(AIResult.id.desc()).first()
     if result is None:
         return {"status": "unavailable"}
     status = result.validation_status

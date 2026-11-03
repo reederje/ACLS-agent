@@ -179,6 +179,7 @@ def test_read_only_board_and_recorder_workspace_render(client):
     assert b"shock-recommendations-dialog" in workspace.data
     assert b"Next steps" in workspace.data
     assert b'id="rhythm-buttons"' in workspace.data
+    assert b'id="ai-resuscitation-facts"' in workspace.data
     script = client.get("/static/js/session.js").get_data(as_text=True)
     for choice in ("Shockable", "Non-shockable", '"VF"', '"VT — pulseless"', '"VT — with pulse"', '"PEA"', '"Asystole"', '"Unknown"', '"ROSC"'):
         assert choice in script

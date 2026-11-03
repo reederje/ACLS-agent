@@ -123,6 +123,15 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .event-fields { margin: .8rem 0; }
 .medication-catalog-note { grid-column: 1 / -1; margin: 0; font-size: .88rem; }
 .event-list { max-height: 390px; overflow: auto; list-style: none; margin: .8rem 0 0; padding: 0; border-top: 1px solid #dbe3e7; }
+.ai-resuscitation-summary { margin-top: .65rem; padding: .65rem .75rem; border: 1px solid #b8cbd3; border-left: 4px solid #17647b; border-radius: 7px; background: #f2f8fa; }
+.ai-resuscitation-summary .section-heading { align-items: start; gap: .35rem; }
+.ai-resuscitation-summary h3 { margin: 0; font-size: .95rem; }
+.ai-resuscitation-summary .eyebrow { margin-bottom: .15rem; }
+.ai-resuscitation-summary p { margin: .45rem 0 0; line-height: 1.45; }
+.ai-resuscitation-facts { margin: .45rem 0 0; padding-left: 1.2rem; line-height: 1.4; }
+.ai-resuscitation-facts > li { margin: .2rem 0; }
+.ai-resuscitation-facts ul { margin: .15rem 0 .25rem; padding-left: 1.1rem; }
+.ai-resuscitation-summary small { display: block; margin-top: .4rem; }
 .event-item { padding: .75rem .25rem; border-bottom: 1px solid #e2e8eb; }
 .event-heading { display: flex; justify-content: space-between; gap: 1rem; }
 .event-heading time, .event-item small { color: #52616a; font-size: .82rem; }
@@ -170,7 +179,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 @media (max-width: 1000px) { .workspace-grid { grid-template-columns: minmax(0, 1fr) 260px; } .overview-row { grid-template-columns: minmax(190px, .65fr) minmax(0, 1.5fr); } }
 @media (max-width: 760px) { .workspace { width: calc(100vw - 1rem); } .workspace-grid { grid-template-columns: 1fr; } .context-pane { position: static; max-height: none; } .overview-row { grid-template-columns: 1fr; } .patient-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .timer-panel { grid-template-columns: 1fr 1fr; } .timer-primary { grid-column: 1 / -1; } .tile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .board-top-grid { grid-template-columns: 1fr; } .board-timer { min-height: 145px; } .board-grid { grid-template-columns: 1fr; } .board-header { align-items: flex-start; flex-direction: column; } .board-sync { justify-items: start; } }
 @media (max-width: 420px) { .patient-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .timer-panel { grid-template-columns: 1fr; } .timer-primary { grid-column: auto; } .inline-form, .event-fields { grid-template-columns: 1fr; } .section-heading { align-items: flex-start; flex-direction: column; } }
-.ai-summary { margin: 0 0 1rem; padding: .75rem 1rem; border: 1px solid #9aadb5; border-radius: 8px; background: #f6fafb; }
+.ai-summary { margin: 0 0 1rem; padding: .75rem 1rem; border: 1px solid #9aadb5; border-radius: 8px; background: #f6fafb; font-size: .82rem; }
 .ai-cause-list { padding-left: 1.25rem; }
 .ai-cause-list li { margin-bottom: .5rem; }
 .link-button { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; color: #17657c; text-decoration: underline; cursor: pointer; }
