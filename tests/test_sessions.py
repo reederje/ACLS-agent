@@ -189,6 +189,12 @@ def test_read_only_board_and_recorder_workspace_render(client):
     board = client.get(f"/board/{session_id}")
     assert board.status_code == 200
     assert b"READ ONLY" in board.data
+    assert b'id="board-action-items"' in board.data
+    board_script = client.get("/static/js/board.js").get_data(as_text=True)
+    assert "Upcoming" in board_script and "Overdue" in board_script
+    assert 'method: "POST"' not in board_script
+    assert board_script.count('querySelector("#board-next").textContent =') == 1
+    assert "(Date.parse(step.due_at) - currentEpoch()) / 1000 <= 60" in board_script
 
 
 def test_medication_entry_catalog_separates_bolus_and_infusion_choices(client):

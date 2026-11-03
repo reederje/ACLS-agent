@@ -168,6 +168,14 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .board-sync { display: grid; justify-items: end; gap: .35rem; }
 #stale-label { padding: .45rem .7rem; color: #641b15; background: #fff0ed; border: 2px solid #9d2c23; font-weight: 900; }
 .board-top-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0; }
+.board-actions { margin: 0 0 1rem; }
+.board-actions h2 { margin: 0; }
+.board-action-list { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: .65rem; }
+.board-action-chip { display: inline-flex; align-items: center; min-height: 38px; padding: .4rem .75rem; border: 1px solid #b9cbd2; border-radius: 999px; background: #f7fbfc; color: #173b4a; font-size: .88rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.board-action-chip.is-upcoming { border-color: #b37909; background: #fffaf0; color: #654500; }
+.board-action-chip.is-due { border-color: #d9a638; background: #fff7e1; color: #533800; }
+.board-action-chip.is-overdue { border-color: #bd6a5f; background: #fff4f2; color: #81251d; }
+.board-action-chip.is-untimed { border-color: #b9cbd2; background: #f4f7f8; color: #344750; }
 .board-timer { min-height: 190px; display: flex; flex-direction: column; justify-content: center; }
 .board-timer strong { font-size: clamp(2.2rem, 5vw, 5rem); font-variant-numeric: tabular-nums; color: #073b4c; line-height: 1.1; }
 .board-timer span:last-child { color: #52616a; font-size: 1.2rem; }
